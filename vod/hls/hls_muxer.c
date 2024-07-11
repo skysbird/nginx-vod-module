@@ -2,6 +2,7 @@
 #include "../input/frames_source_cache.h"
 #include "frame_joiner_filter.h"
 #include "id3_encoder_filter.h"
+#include "frame_watermark_filter.h"
 #include "hls_muxer.h"
 
 #if (VOD_HAVE_OPENSSL_EVP)
@@ -387,6 +388,15 @@ hls_muxer_init_base(
 					return rc;
 				}
 			}
+
+			//water mark
+			rc = frame_watermark_filter_init(
+					&cur_stream->filter,
+					&cur_stream->filter_context);
+				if (rc != VOD_OK)
+				{
+					return rc;
+				}
 
 #if (VOD_HAVE_OPENSSL_EVP)
 			if (encryption_params->type == HLS_ENC_SAMPLE_AES)
