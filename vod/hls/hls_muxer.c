@@ -284,6 +284,8 @@ hls_muxer_init_base(
 	state->media_set = media_set;
 	state->use_discontinuity = media_set->use_discontinuity;
 
+	
+	
 	// init the packetizer streams and get the packet ids / stream ids
 	rc = mpegts_encoder_init_streams(
 		request_context,
@@ -309,7 +311,7 @@ hls_muxer_init_base(
 
 	track = media_set->filtered_tracks;
 	for (cur_stream = state->first_stream; cur_stream < state->last_stream; cur_stream++, track++)
-	{
+	{	
 		rc = hls_muxer_init_stream(
 			state,
 			conf,
@@ -342,6 +344,23 @@ hls_muxer_init_base(
 				break;
 			}
 
+			// if (track->media_info.codec_id >= VOD_CODEC_ID_VIDEO && track->media_info.codec_id<=VOD_CODEC_ID_AV1 )
+			// {
+
+			// 	//water mark
+			// 	rc = frame_watermark_filter_init(
+			// 			&cur_stream->filter,
+			// 			&cur_stream->filter_context);
+						
+			// 	if (rc != VOD_OK)
+			// 	{
+			// 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+			// "frame_watermark_filter_init: vod_alloc failed %d", rc);
+			// 		return rc;
+			// 	}
+			// }
+
+
 			rc = mp4_to_annexb_init(
 				&cur_stream->filter,
 				&cur_stream->filter_context,
@@ -350,6 +369,28 @@ hls_muxer_init_base(
 			{
 				return rc;
 			}
+
+			// if (track->media_info.codec_id >= VOD_CODEC_ID_VIDEO && track->media_info.codec_id<=VOD_CODEC_ID_AV1 )
+			// {
+				
+			// 	vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+			// "prepare frame_watermark_filter_init %d", track->media_info.codec_id);
+
+
+			// 	//water mark
+			// 	rc = frame_watermark_filter_init_2(
+			// 			&cur_stream->filter,
+			// 			&cur_stream->filter_context,
+			// 			&track->media_info);
+			// 	if (rc != VOD_OK)
+			// 	{
+			// 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+			// "frame_watermark_filter_init: vod_alloc failed %d", rc);
+			// 		return rc;
+			// 	}
+			// }
+			
+			
 			break;
 
 		case MEDIA_TYPE_AUDIO:
@@ -388,15 +429,6 @@ hls_muxer_init_base(
 					return rc;
 				}
 			}
-
-			//water mark
-			rc = frame_watermark_filter_init(
-					&cur_stream->filter,
-					&cur_stream->filter_context);
-				if (rc != VOD_OK)
-				{
-					return rc;
-				}
 
 #if (VOD_HAVE_OPENSSL_EVP)
 			if (encryption_params->type == HLS_ENC_SAMPLE_AES)

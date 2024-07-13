@@ -27,6 +27,7 @@
 #include "vod/media_set_parser.h"
 #include "vod/manifest_utils.h"
 #include "vod/input/silence_generator.h"
+#include "vod/filters/video_filter.h"
 
 #if (NGX_HAVE_LIB_AV_CODEC)
 #include "ngx_http_vod_thumb.h"
@@ -3380,6 +3381,7 @@ ngx_http_vod_init_process(ngx_cycle_t *cycle)
 	vod_status_t rc;
 
 	audio_filter_process_init(cycle->log);
+	video_filter_process_init(cycle->log);
 
 #if (NGX_HAVE_LIB_AV_CODEC)
 	audio_decoder_process_init(cycle->log);

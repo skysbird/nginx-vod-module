@@ -4,6 +4,7 @@
 #include "concat_clip.h"
 #include "../media_set.h"
 #include "../segmenter.h"
+#include "video_filter.h"
 
 // typedefs
 typedef struct {
@@ -27,6 +28,7 @@ typedef struct {
 	media_clip_filtered_t* output_clip;
 	media_track_t* cur_track;
 	void* audio_filter;
+	void* video_filter;
 	uint32_t max_frame_count;
 	uint32_t output_codec_id;
 } apply_filters_state_t;
@@ -512,7 +514,7 @@ filter_run_state_machine(void* context)
 
 	for (;;)
 	{
-		if (state->audio_filter != NULL)
+		if (state->audio_filter != NULL && state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO)
 		{
 			// run the audio filter
 			rc = audio_filter_process(state->audio_filter);
@@ -523,6 +525,21 @@ filter_run_state_machine(void* context)
 
 			audio_filter_free_state(state->audio_filter);
 			state->audio_filter = NULL;
+
+			state->cur_track++;
+		}
+
+		if (state->video_filter != NULL  && state->cur_track->media_info.media_type == MEDIA_TYPE_VIDEO)
+		{
+			// run the audio filter
+			rc = video_filter_process(state->video_filter);
+			if (rc != VOD_OK)
+			{
+				return rc;
+			}
+
+			video_filter_free_state(state->video_filter);
+			state->video_filter = NULL;
 
 			state->cur_track++;
 		}
@@ -552,33 +569,70 @@ filter_run_state_machine(void* context)
 			continue;
 		}
 
-		// initialize the audio filter
-		rc = audio_filter_alloc_state(
-			state->request_context,
-			state->sequence,
-			state->cur_track->source_clip,
-			state->cur_track,
-			state->max_frame_count,
-			state->output_codec_id,
-			&cache_buffer_count,
-			&state->audio_filter);
-		if (rc != VOD_OK)
-		{
-			return rc;
-		}
-
-		if (state->audio_filter == NULL)
-		{
-			state->cur_track++;
-		}
-		else
-		{
-			// make sure the cache has enough slots
-			rc = read_cache_allocate_buffer_slots(state->read_cache_state, cache_buffer_count);
+		if (state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO) {
+			// initialize the audio filter
+			rc = audio_filter_alloc_state(
+				state->request_context,
+				state->sequence,
+				state->cur_track->source_clip,
+				state->cur_track,
+				state->max_frame_count,
+				state->output_codec_id,
+				&cache_buffer_count,
+				&state->audio_filter);
 			if (rc != VOD_OK)
 			{
 				return rc;
 			}
+
+			if (state->audio_filter == NULL)
+			{
+				state->cur_track++;
+			}
+			else
+			{
+				// make sure the cache has enough slots
+				rc = read_cache_allocate_buffer_slots(state->read_cache_state, cache_buffer_count);
+				if (rc != VOD_OK)
+				{
+					return rc;
+				}
+			}
 		}
+
+		if (state->cur_track->media_info.media_type == MEDIA_TYPE_VIDEO) {
+
+			// initialize the video filter
+			rc = video_filter_alloc_state(
+				state->request_context,
+				state->sequence,
+				state->cur_track->source_clip,
+				state->cur_track,
+				state->max_frame_count,
+				state->output_codec_id,
+				&cache_buffer_count,
+				&state->video_filter);
+			if (rc != VOD_OK)
+			{
+				return rc;
+			}
+
+			if (state->video_filter == NULL)
+			{
+				state->cur_track++;
+			}
+			else
+			{
+				// make sure the cache has enough slots
+				rc = read_cache_allocate_buffer_slots(state->read_cache_state, cache_buffer_count);
+				if (rc != VOD_OK)
+				{
+					return rc;
+				}
+			}
+
+		}
+
+		
 	}
 }

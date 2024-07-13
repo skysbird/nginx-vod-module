@@ -13,6 +13,8 @@
 // typedefs
 struct segmenter_conf_s;
 struct audio_filter_s;
+struct video_filter_s;
+
 struct media_sequence_s;
 
 typedef enum {
@@ -27,6 +29,8 @@ typedef enum {
 	MEDIA_CLIP_GAIN_FILTER,
 	MEDIA_CLIP_CONCAT,
 	MEDIA_CLIP_DYNAMIC,
+	MEDIA_CLIP_WATERMARK_FILTER,
+
 } media_clip_type_t;
 
 typedef enum {
@@ -42,6 +46,8 @@ typedef struct media_clip_s {
 
 	// TODO: the fields below are not required for sources, consider adding another struct
 	struct audio_filter_s* audio_filter;
+	struct video_filter_s* video_filter;
+
 	struct media_clip_s** sources;
 	uint32_t source_count;
 } media_clip_t;

@@ -6,6 +6,7 @@
 
 // typedefs
 enum {
+	MEDIA_FILTER_WATERMARK,
 	MEDIA_FILTER_MPEGTS,
 	MEDIA_FILTER_MP4_TO_ANNEXB,
 	MEDIA_FILTER_JOINER,
@@ -14,7 +15,6 @@ enum {
 	MEDIA_FILTER_ENCRYPT,
 	MEDIA_FILTER_EAC3_ENCRYPT,
 	MEDIA_FILTER_ID3,
-	MEDIA_FILTER_WATERMARK,
 	
 	MEDIA_FILTER_COUNT
 };
@@ -30,6 +30,8 @@ typedef struct {
 	int key;
 	uint32_t size;
 	uint32_t header_size;
+	uint32_t duration;
+
 } output_frame_t;
 
 typedef vod_status_t (*media_filter_start_frame_t)(

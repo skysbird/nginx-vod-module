@@ -170,6 +170,8 @@ if [ $ngx_found = yes ]; then
         $ngx_addon_dir/vod/filters/audio_encoder.c          \
         $ngx_addon_dir/vod/filters/volume_map.c             \
         $ngx_addon_dir/vod/thumb/thumb_grabber.c            \
+        $ngx_addon_dir/vod/filters/video_decoder.c          \
+        $ngx_addon_dir/vod/filters/video_encoder.c          \
         "
 
     VOD_FEATURE_DEPS="                                      \
@@ -183,6 +185,8 @@ if [ $ngx_found = yes ]; then
         $ngx_addon_dir/vod/filters/audio_encoder.h          \
         $ngx_addon_dir/vod/filters/volume_map.h             \
         $ngx_addon_dir/vod/thumb/thumb_grabber.h            \
+        $ngx_addon_dir/vod/filters/video_decoder.h          \
+        $ngx_addon_dir/vod/filters/video_encoder.h          \
         "
 
     VOD_SRCS="$VOD_SRCS $VOD_FEATURE_SRCS"
@@ -285,12 +289,14 @@ VOD_DEPS="$VOD_DEPS                                           \
           $ngx_addon_dir/vod/dash/dash_packager.h             \
           $ngx_addon_dir/vod/dynamic_buffer.h                 \
           $ngx_addon_dir/vod/filters/audio_filter.h           \
+          $ngx_addon_dir/vod/filters/video_filter.h           \
           $ngx_addon_dir/vod/filters/concat_clip.h            \
           $ngx_addon_dir/vod/filters/dynamic_clip.h           \
           $ngx_addon_dir/vod/filters/filter.h                 \
           $ngx_addon_dir/vod/filters/gain_filter.h            \
           $ngx_addon_dir/vod/filters/mix_filter.h             \
           $ngx_addon_dir/vod/filters/rate_filter.h            \
+          $ngx_addon_dir/vod/filters/watermark_filter.h            \
           $ngx_addon_dir/vod/hds/hds_amf0_encoder.h           \
           $ngx_addon_dir/vod/hds/hds_amf0_fields_x.h          \
           $ngx_addon_dir/vod/hds/hds_encryption.h             \
@@ -376,12 +382,14 @@ VOD_SRCS="$VOD_SRCS                                           \
           $ngx_addon_dir/vod/dash/dash_packager.c             \
           $ngx_addon_dir/vod/dynamic_buffer.c                 \
           $ngx_addon_dir/vod/filters/audio_filter.c           \
+          $ngx_addon_dir/vod/filters/video_filter.c           \
           $ngx_addon_dir/vod/filters/concat_clip.c            \
           $ngx_addon_dir/vod/filters/dynamic_clip.c           \
           $ngx_addon_dir/vod/filters/filter.c                 \
           $ngx_addon_dir/vod/filters/gain_filter.c            \
           $ngx_addon_dir/vod/filters/mix_filter.c             \
           $ngx_addon_dir/vod/filters/rate_filter.c            \
+          $ngx_addon_dir/vod/filters/watermark_filter.c            \
           $ngx_addon_dir/vod/hds/hds_amf0_encoder.c           \
           $ngx_addon_dir/vod/hds/hds_fragment.c               \
           $ngx_addon_dir/vod/hds/hds_manifest.c               \
