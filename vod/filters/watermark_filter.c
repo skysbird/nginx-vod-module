@@ -175,6 +175,8 @@ watermark_filter_parse(
 
 	filter->base.type = MEDIA_CLIP_WATERMARK_FILTER;
 	filter->base.video_filter = &watermark_filter;
+	filter->base.audio_filter = NULL;
+
 	filter->watermark.num = watermark->v.num.num;
 	filter->watermark.denom = watermark->v.num.denom;
 
@@ -264,6 +266,7 @@ watermark_filter_create_from_string(
 
 	filter->base.type = MEDIA_CLIP_WATERMARK_FILTER;
 	filter->base.video_filter = &watermark_filter;
+	filter->base.audio_filter = NULL;
 	filter->watermark.num = num;
 	filter->watermark.denom = 100;
 

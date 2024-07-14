@@ -264,6 +264,7 @@ rate_filter_create_from_string(
 
 	filter->base.type = MEDIA_CLIP_RATE_FILTER;
 	filter->base.audio_filter = &rate_filter;
+	filter->base.video_filter = NULL;
 	filter->rate.num = num;
 	filter->rate.denom = 100;
 

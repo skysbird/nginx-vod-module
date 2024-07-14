@@ -34,6 +34,8 @@
 #include "ngx_http_vod_volume_map.h"
 #include "vod/filters/audio_decoder.h"
 #include "vod/filters/audio_encoder.h"
+#include "vod/filters/video_decoder.h"
+#include "vod/filters/video_encoder.h"
 #include "vod/thumb/thumb_grabber.h"
 #endif // NGX_HAVE_LIB_AV_CODEC
 
@@ -3386,6 +3388,8 @@ ngx_http_vod_init_process(ngx_cycle_t *cycle)
 #if (NGX_HAVE_LIB_AV_CODEC)
 	audio_decoder_process_init(cycle->log);
 	audio_encoder_process_init(cycle->log);
+	video_decoder_process_init(cycle->log);
+	video_encoder_process_init(cycle->log);
 	thumb_grabber_process_init(cycle->log);
 #endif // NGX_HAVE_LIB_AV_CODEC
 
@@ -3752,7 +3756,7 @@ ngx_http_vod_run_state_machine(ngx_http_vod_ctx_t *ctx)
 			return NGX_OK;
 		}
 
-		if (ctx->submodule_context.media_set.audio_filtering_needed)
+		// if (ctx->submodule_context.media_set.audio_filtering_needed)
 		{
 			// initialize the filtering of audio frames
 			ctx->state = STATE_FILTER_FRAMES;

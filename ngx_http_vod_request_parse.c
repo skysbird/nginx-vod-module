@@ -3,6 +3,8 @@
 #include "ngx_http_vod_conf.h"
 #include "ngx_http_vod_utils.h"
 #include "vod/filters/rate_filter.h"
+#include "vod/filters/watermark_filter.h"
+
 #include "vod/parse_utils.h"
 
 // macros
@@ -857,6 +859,8 @@ ngx_http_vod_extract_uri_params(
 {
 	ngx_http_vod_uri_param_def_t* param_def = NULL;
 	media_clip_rate_filter_t* rate_filter = NULL;
+	media_clip_rate_filter_t* watermark_filter = NULL;
+
 	request_context_t request_context;
 	ngx_uint_t  cur_key_hash = 0;
 	ngx_str_t cur_param;
@@ -939,21 +943,41 @@ ngx_http_vod_extract_uri_params(
 					request_context.pool = r->pool;
 					request_context.log = r->connection->log;
 
-					rc = rate_filter_create_from_string(
+
+
+					// //FIXME: 单独配置watermark_filter
+					rc = watermark_filter_create_from_string(
 						&request_context,
 						&cur_param,
 						&source_clip->base, 
+						&watermark_filter);
+					if (rc != VOD_OK)
+					{
+						return ngx_http_vod_status_to_ngx_error(r, rc);
+					}
+
+					// //FIXME
+					watermark_filter->base.id = (*clip_id)++;
+					*result = &watermark_filter->base;
+
+
+					rc = rate_filter_create_from_string(
+						&request_context,
+						&cur_param,
+						&watermark_filter->base, 
 						&rate_filter);
 					if (rc != VOD_OK)
 					{
 						return ngx_http_vod_status_to_ngx_error(r, rc);
 					}
 
+					// XXX just for test
 					if (rate_filter->rate.num != rate_filter->rate.denom)
 					{
 						rate_filter->base.id = (*clip_id)++;
 						*result = &rate_filter->base;
-					}
+					}					
+					
 				}
 				else
 				{

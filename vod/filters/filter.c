@@ -14,9 +14,14 @@ typedef struct {
 	media_clip_filtered_t* output_clip;
 	media_track_t* output_track;
 	media_track_t* audio_reference_track;
+	media_track_t* video_reference_track;
+
+	
 	uint32_t audio_reference_track_speed_num;
 	uint32_t audio_reference_track_speed_denom;
 	bool_t has_audio_frames;
+	bool_t has_video_frames;
+
 	uint32_t source_count;
 } filters_init_state_t;
 
@@ -165,6 +170,7 @@ filter_scale_video_tracks(filters_init_state_t* state, media_clip_t* clip, uint3
 		{
 			switch (cur_track->media_info.media_type)
 			{
+
 			case MEDIA_TYPE_AUDIO:
 				if (state->audio_reference_track == NULL)
 				{
@@ -175,6 +181,17 @@ filter_scale_video_tracks(filters_init_state_t* state, media_clip_t* clip, uint3
 				if (cur_track->frame_count > 0)
 				{
 					state->has_audio_frames = TRUE;
+				}
+				break;
+
+			case MEDIA_TYPE_VIDEO:
+				if (state->video_reference_track == NULL)
+				{
+					state->video_reference_track = cur_track;
+				}
+				if (cur_track->frame_count > 0)
+				{
+					state->has_video_frames = TRUE;
 				}
 				break;
 
@@ -397,6 +414,7 @@ filter_init_filtered_clips(
 			init_state.sequence = sequence;
 			init_state.output_clip = output_clip;
 			init_state.audio_reference_track = NULL;
+			init_state.video_reference_track = NULL;
 
 			// in case of source, just copy all tracks as is
 			if (media_clip_is_source(input_clip->type))
@@ -408,6 +426,7 @@ filter_init_filtered_clips(
 			}
 			else
 			{
+				init_state.has_video_frames = FALSE;
 				init_state.has_audio_frames = FALSE;
 				init_state.source_count = 0;
 
@@ -438,6 +457,28 @@ filter_init_filtered_clips(
 			}
 
 			output_clip->last_track = init_state.output_track;
+
+			if (init_state.video_reference_track != NULL)
+			{
+				// add the audio filter output track
+				new_track = filter_copy_track_to_clip(&init_state, init_state.video_reference_track);
+				
+
+				if (init_state.audio_reference_track_speed_num != init_state.audio_reference_track_speed_denom)
+				{
+					rate_filter_scale_track_timestamps(
+						new_track,
+						init_state.audio_reference_track_speed_num,
+						init_state.audio_reference_track_speed_denom);
+				}
+
+				if (!parsed_frames || init_state.has_video_frames)
+				{
+					new_track->source_clip = input_clip;
+					media_set->video_filtering_needed = TRUE;
+				}
+			}
+
 
 			// make sure all clips have the same codecs
 			if (clip_index > 0)
@@ -499,7 +540,8 @@ filter_init_state(
 	state->max_frame_count = max_frame_count;
 	state->output_codec_id = output_codec_id;
 	state->audio_filter = NULL;
-
+	state->video_filter = NULL;
+	
 	*context = state;
 
 	return VOD_OK;
@@ -514,22 +556,27 @@ filter_run_state_machine(void* context)
 
 	for (;;)
 	{
-		if (state->audio_filter != NULL && state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO)
-		{
-			// run the audio filter
-			rc = audio_filter_process(state->audio_filter);
-			if (rc != VOD_OK)
-			{
-				return rc;
-			}
+		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+				"media_type=%d",state->cur_track->media_info.media_type);
 
-			audio_filter_free_state(state->audio_filter);
-			state->audio_filter = NULL;
+		state->cur_track++;
+		
+		// if (state->audio_filter != NULL)
+		// {
+		// 	// run the audio filter
+		// 	rc = audio_filter_process(state->audio_filter);
+		// 	if (rc != VOD_OK)
+		// 	{
+		// 		return rc;
+		// 	}
 
-			state->cur_track++;
-		}
+		// 	audio_filter_free_state(state->audio_filter);
+		// 	state->audio_filter = NULL;
 
-		if (state->video_filter != NULL  && state->cur_track->media_info.media_type == MEDIA_TYPE_VIDEO)
+		// 	// state->cur_track++;
+		// }
+
+		if (state->video_filter != NULL && state->cur_track->media_info.media_type == MEDIA_TYPE_VIDEO)
 		{
 			// run the audio filter
 			rc = video_filter_process(state->video_filter);
@@ -544,30 +591,30 @@ filter_run_state_machine(void* context)
 			state->cur_track++;
 		}
 		
-		if (state->cur_track >= state->output_clip->last_track)
-		{
-			// move to the next track
-			state->output_clip++;
+		// if (state->cur_track >= state->output_clip->last_track)
+		// {
+		// 	// move to the next track
+		// 	state->output_clip++;
 
-			if (state->output_clip >= state->sequence->filtered_clips_end)
-			{
-				state->sequence++;
-				if (state->sequence >= state->media_set->sequences_end)
-				{
-					return VOD_OK;
-				}
+		// 	if (state->output_clip >= state->sequence->filtered_clips_end)
+		// 	{
+		// 		state->sequence++;
+		// 		if (state->sequence >= state->media_set->sequences_end)
+		// 		{
+		// 			return VOD_OK;
+		// 		}
 
-				state->output_clip = state->sequence->filtered_clips;
-			}
+		// 		state->output_clip = state->sequence->filtered_clips;
+		// 	}
 
-			state->cur_track = state->output_clip->first_track;
-		}
+		// 	state->cur_track = state->output_clip->first_track;
+		// }
 
-		if (state->cur_track->source_clip == NULL)
-		{
-			state->cur_track++;
-			continue;
-		}
+		// if (state->cur_track->source_clip == NULL)
+		// {
+		// 	// state->cur_track++;
+		// 	continue;
+		// }
 
 		if (state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO) {
 			// initialize the audio filter
@@ -587,7 +634,7 @@ filter_run_state_machine(void* context)
 
 			if (state->audio_filter == NULL)
 			{
-				state->cur_track++;
+				// state->cur_track++;
 			}
 			else
 			{

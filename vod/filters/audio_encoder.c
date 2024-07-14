@@ -66,12 +66,12 @@ audio_encoder_process_init(vod_log_t* log)
 		}
 	}
 
-	if (!audio_encoder_is_format_supported(encoder_codec, AUDIO_ENCODER_INPUT_SAMPLE_FORMAT))
-	{
-		vod_log_error(VOD_LOG_WARN, log, 0,
-			"audio_encoder_process_init: encoder does not support the required input format, audio encoding is disabled");
-		return;
-	}
+	// if (!audio_encoder_is_format_supported(encoder_codec, AUDIO_ENCODER_INPUT_SAMPLE_FORMAT))
+	// {
+	// 	vod_log_error(VOD_LOG_WARN, log, 0,
+	// 		"audio_encoder_process_init: encoder does not support the required input format, audio encoding is disabled");
+	// 	return;
+	// }
 
 	initialized = TRUE;
 }

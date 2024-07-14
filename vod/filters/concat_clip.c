@@ -460,6 +460,7 @@ concat_clip_parse(
 
 	clip->base.type = MEDIA_CLIP_CONCAT;
 	clip->base.audio_filter = NULL;
+	clip->base.video_filter = NULL;
 
 	clip->base.sources = (void*)(clip + 1);
 	for (i = 0; i < clip_count; i++)

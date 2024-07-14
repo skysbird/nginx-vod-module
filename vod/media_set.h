@@ -163,6 +163,8 @@ typedef struct {
 	media_track_t* filtered_tracks;			// [total_track_count * clip_count] (all tracks of clip 0, then all tracks of clip1 etc.)
 	media_track_t* filtered_tracks_end;
 	bool_t audio_filtering_needed;
+	bool_t video_filtering_needed;
+
 } media_set_t;
 
 typedef struct {

@@ -6,7 +6,7 @@
 #include <libavcodec/avcodec.h>
 
 // constants
-#define AUDIO_ENCODER_INPUT_SAMPLE_FORMAT (AV_SAMPLE_FMT_S16)
+#define AUDIO_ENCODER_INPUT_SAMPLE_FORMAT (AV_SAMPLE_FMT_FLTP)
 
 //typedefs
 typedef struct

@@ -38,6 +38,8 @@ dynamic_clip_parse(
 
 	filter->base.type = MEDIA_CLIP_DYNAMIC;
 	filter->base.audio_filter = NULL;
+	filter->base.video_filter = NULL;
+
 	filter->base.sources = NULL;
 	filter->base.source_count = 0;
 

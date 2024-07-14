@@ -121,7 +121,7 @@ video_filter_walk_filters_prepare_init(
 		video_track = NULL;
 		for (cur_track = source->track_array.first_track; cur_track < source->track_array.last_track; cur_track++)
 		{
-			if (cur_track->media_info.media_type != MEDIA_TYPE_AUDIO)
+			if (cur_track->media_info.media_type != MEDIA_TYPE_VIDEO)
 			{
 				continue;
 			}
@@ -193,6 +193,7 @@ video_filter_walk_filters_prepare_init(
 		{
 		case MEDIA_CLIP_MIX_FILTER:
 		case MEDIA_CLIP_CONCAT:
+		case MEDIA_CLIP_RATE_FILTER:
 			// in case of mixing a single clip or concat, skip the filter
 			*clip_ptr = last_source;
 			return VOD_OK;

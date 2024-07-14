@@ -1,5 +1,7 @@
 #include "audio_filter.h"
 #include "rate_filter.h"
+#include "watermark_filter.h"
+#include "video_filter.h"
 
 #if (VOD_HAVE_LIB_AV_CODEC && VOD_HAVE_LIB_AV_FILTER)
 #include <libavcodec/avcodec.h>
@@ -202,8 +204,16 @@ audio_filter_walk_filters_prepare_init(
 		break;
 	}
 
-	// update the graph description size
-	state->graph_desc_size += clip->audio_filter->get_filter_desc_size(clip) + 1;	// 1 = ';'
+	if (clip->audio_filter!=NULL) {
+		// update the graph description size
+		state->graph_desc_size += clip->audio_filter->get_filter_desc_size(clip) + 1;	// 1 = ';'
+	} 
+
+	if (clip->video_filter!=NULL) {
+		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+					"audio_filter_walk_filters_prepare_init: test for video filter");
+
+	}
 
 	return VOD_OK;
 }
@@ -537,7 +547,13 @@ audio_filter_init_sources_and_graph_desc(audio_filter_init_context_t* state, med
 		*state->graph_desc_pos++ = ';';
 	}
 
-	state->graph_desc_pos = clip->audio_filter->append_filter_desc(state->graph_desc_pos, clip);
+	if (clip->audio_filter!=NULL) {
+		state->graph_desc_pos = clip->audio_filter->append_filter_desc(state->graph_desc_pos, clip);
+	}
+
+	if (clip->video_filter!=NULL) {
+		state->graph_desc_pos = clip->video_filter->append_filter_desc(state->graph_desc_pos, clip);
+	}
 
 	return VOD_OK;
 }
