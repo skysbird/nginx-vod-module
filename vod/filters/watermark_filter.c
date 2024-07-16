@@ -3,7 +3,10 @@
 #include "../media_set_parser.h"
 
 // macros
-#define watermark_FILTER_DESC_PATTERN "[%uD]atempo=%uD.%02uD[%uD]"
+// #define watermark_FILTER_DESC_PATTERN "[%uD]atempo=%uD.%02uD[%uD]"
+// #define watermark_FILTER_DESC_PATTERN "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d"
+#define watermark_FILTER_DESC_PATTERN "drawtext=text='Your Watermark':fontcolor=white@0.8:x=10:y=10"
+
 
 // enums
 enum {
@@ -85,25 +88,22 @@ static u_char*
 watermark_filter_append_desc(u_char* p, media_clip_t* clip)
 {
 	media_clip_watermark_filter_t* filter = vod_container_of(clip, media_clip_watermark_filter_t, base);
-	uint32_t denom;
-	uint32_t num;
+	// uint32_t denom;
+	// uint32_t num;
 
 	// normalize the fraction to 100 denom
-	num = filter->watermark.num;
-	denom = filter->watermark.denom;
-	while (denom < 100)
-	{
-		num *= 10;
-		denom *= 10;
-	}
+	// num = filter->watermark.num;
+	// denom = filter->watermark.denom;
+	// while (denom < 100)
+	// {
+	// 	num *= 10;
+	// 	denom *= 10;
+	// }
 
+	//TODO 很多hard coding
 	return vod_sprintf(
 		p,
-		watermark_FILTER_DESC_PATTERN,
-		clip->sources[0]->id,
-		num / 100,
-		num % 100,
-		clip->id);
+		watermark_FILTER_DESC_PATTERN);
 }
 
 static video_filter_t watermark_filter = {

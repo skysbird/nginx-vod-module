@@ -11,7 +11,7 @@ video_decoder_process_init(vod_log_t* log)
 		avcodec_register_all();
 	#endif
 
-	decoder_codec = avcodec_find_decoder(AV_CODEC_ID_AAC);
+	decoder_codec = avcodec_find_decoder(AV_CODEC_ID_H264);
 	if (decoder_codec == NULL)
 	{
 		vod_log_error(VOD_LOG_WARN, log, 0,
@@ -22,6 +22,133 @@ video_decoder_process_init(vod_log_t* log)
 	initialized = TRUE;
 }
 
+// void save_extra_data_to_file(media_info_t* media_info, const char* file_name) {
+//     FILE* file = fopen(file_name, "wb");
+//     if (!file) {
+//         perror("Failed to open file");
+//         return;
+//     }
+
+//     size_t written = fwrite(media_info->extra_data.data, 1, media_info->extra_data.len, file);
+//     if (written != media_info->extra_data.len) {
+//         perror("Failed to write all data to file");
+//     } else {
+//         printf("Data successfully written to %s\n", file_name);
+//     }
+
+//     fclose(file);
+// }
+
+
+/* 将数据复制并且增加start      code */
+static int alloc_and_copy(AVPacket *pOutPkt, const uint8_t *spspps, uint32_t spsppsSize,
+                          const uint8_t *pIn, uint32_t inSize)
+{
+    int err;
+    int startCodeLen = 3; /* start code长度 */
+
+    /* 给pOutPkt->data分配内存 */
+    err = av_grow_packet(pOutPkt, spsppsSize + inSize + startCodeLen);
+    if (err < 0)
+        return err;
+    
+    if (spspps)
+    {
+        memcpy(pOutPkt->data , spspps, spsppsSize); /* 拷贝SPS与PPS(前面分离的时候已经加了startcode(00 00 00 01)) */
+    }
+    
+    /* 将真正的原始数据写入packet中 */
+    (pOutPkt->data + spsppsSize)[0] = 0;
+    (pOutPkt->data + spsppsSize)[1] = 0;
+    (pOutPkt->data + spsppsSize)[2] = 1;
+    memcpy(pOutPkt->data + spsppsSize + startCodeLen , pIn, inSize);
+
+    return 0;
+}
+
+static int h264Mp4ToAnnexb(u_char* buffer, int size,  AVPacket *spsppsPkt , AVPacket **pOutPkt)
+{
+    unsigned char *pData = buffer; /* 帧数据 */
+    unsigned char *pEnd = NULL;
+    int dataSize = size; /* pAvPkt->data的数据量 */
+    int curSize = 0;
+    int naluSize = 0; 
+    int i;
+    unsigned char nalHeader, nalType;
+    int ret;
+    int len;
+
+    *pOutPkt = av_packet_alloc();
+    (*pOutPkt)->data = NULL;
+    (*pOutPkt)->size = 0;
+
+    pEnd = pData + dataSize;
+
+     
+
+    while(curSize < dataSize)
+    {
+        if(pEnd-pData < 4)
+            goto fail;
+
+        /* 前四个字节表示当前NALU的大小 */
+        for(i = 0; i < 4; i++)
+        {
+            naluSize <<= 8;
+            naluSize |= pData[i];
+        }
+
+        pData += 4;
+
+        if(naluSize > (pEnd-pData+1) || naluSize <= 0)
+        {
+            goto fail;
+        }
+        
+        nalHeader = *pData;
+        nalType = nalHeader&0x1F;
+        if(nalType == 5)
+        {
+           
+            /* 添加start code */
+            ret = alloc_and_copy(*pOutPkt, spsppsPkt->data, spsppsPkt->size, pData, naluSize);
+            if(ret < 0)
+                goto fail;
+        }
+        else
+        {
+            /* 添加start code */
+            ret = alloc_and_copy(*pOutPkt, NULL, 0, pData, naluSize);
+            if(ret < 0)
+                goto fail;
+        }
+
+        /* 将处理好的数据写入文件中 */
+        // len = fwrite(pOutPkt->data, 1, pOutPkt->size, pFd);
+        // if(len != pOutPkt->size)
+        // {
+        //     av_log(NULL, AV_LOG_DEBUG, "fwrite warning(%d, %d)!\n", len, pOutPkt->size);
+        // }
+
+        // /* 将数据从缓冲区写入磁盘 */
+        // fflush(pFd);
+
+        curSize += (naluSize+4);
+        pData += naluSize; /* 处理下一个NALU */
+    }
+    
+fail:
+    // av_packet_free(&pOutPkt);
+    // if(spsppsPkt.data)
+    // {
+    //     free(spsppsPkt.data);
+    //     spsppsPkt.data = NULL;
+    // }
+        
+    return 0;
+}
+
+
 static vod_status_t
 video_decoder_init_decoder(
 	video_decoder_state_t* state,
@@ -30,7 +157,7 @@ video_decoder_init_decoder(
 	AVCodecContext* decoder;
 	int avrc;
 
-	if (media_info->codec_id != VOD_CODEC_ID_AAC)
+	if (media_info->codec_id != VOD_CODEC_ID_VIDEO)
 	{
 		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
 			"video_decoder_init_decoder: codec id %uD not supported", media_info->codec_id);
@@ -47,24 +174,17 @@ video_decoder_init_decoder(
 	}
 
 	state->decoder = decoder;	
+	state->extra_data = media_info->extra_data;
 	
 	decoder->codec_tag = media_info->format;
-	decoder->bit_rate = media_info->bitrate;
 	decoder->time_base.num = 1;
 	decoder->time_base.den = media_info->frames_timescale;
-	decoder->pkt_timebase = decoder->time_base;
-	decoder->extradata = media_info->extra_data.data;
-	decoder->extradata_size = media_info->extra_data.len;
+	decoder->codec_id = get_ffmpeg_decoder_id(media_info->codec_id);
+    decoder->codec_type = AVMEDIA_TYPE_VIDEO;
+    decoder->width = media_info->u.video.width;
+    decoder->height = media_info->u.video.height;
 
-#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
-	av_channel_layout_from_mask(&decoder->ch_layout, media_info->u.video.channel_layout);
-#else
-	decoder->channels = media_info->u.audio.channels;
-	decoder->channel_layout = media_info->u.audio.channel_layout;
-#endif
-
-	decoder->bits_per_coded_sample = media_info->u.audio.bits_per_sample;
-	decoder->sample_rate = media_info->u.audio.sample_rate;
+    decoder->pix_fmt = AV_PIX_FMT_YUV420P;
 
 	avrc = avcodec_open2(decoder, decoder_codec, NULL);
 	if (avrc < 0)
@@ -165,6 +285,20 @@ video_decoder_free(video_decoder_state_t* state)
 	av_frame_free(&state->decoded_frame);
 }
 
+static void save_to_file(u_char* buffer, int size, const char* filename) {
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+    size_t written = fwrite(buffer, 1, size, file);
+    if (written != size) {
+        perror("Error writing to file");
+    }
+    fclose(file);
+}
+
+
 static vod_status_t
 video_decoder_decode_frame(
 	video_decoder_state_t* state,
@@ -172,10 +306,15 @@ video_decoder_decode_frame(
 	AVFrame** result)
 {
 	input_frame_t* frame = state->cur_frame;
+
 	AVPacket* input_packet;
 	u_char original_pad[VOD_BUFFER_PADDING_SIZE];
 	u_char* frame_end;
 	int avrc;
+
+
+	vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+			"key_frame: %d\n", frame->key_frame);
 
 	input_packet = av_packet_alloc();
 	if (input_packet == NULL) {
@@ -184,9 +323,27 @@ video_decoder_decode_frame(
 		return VOD_ALLOC_FAILED;
 	}
 
+	AVPacket pAvPkt;
+	AVPacket *pOut;
+
+	pAvPkt.data = state->extra_data.data;
+	pAvPkt.size = state->extra_data.len;
+
+	h264Mp4ToAnnexb(buffer, frame->size, &pAvPkt, &pOut);
+	// uint8_t *out_data = NULL;
+	// int out_size = 0;
+
+	// avc_to_annexb(buffer, frame->size, &out_data, &out_size);
+	// if (avrc)
+	// {
+	// 	vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+	// 		"av_bitstream_filter_filter: av_bitstream_filter_filter failed %d", av_err2str(avrc));
+	// 	return VOD_OK;
+	// }
+
 	// send a frame
-	input_packet->data = buffer;
-	input_packet->size = frame->size;
+	input_packet->data = pOut->data;
+	input_packet->size = pOut->size;
 	input_packet->dts = state->dts;
 	input_packet->pts = state->dts + frame->pts_delay;
 	input_packet->duration = frame->duration;
@@ -199,13 +356,20 @@ video_decoder_decode_frame(
 	vod_memcpy(original_pad, frame_end, sizeof(original_pad));
 	vod_memzero(frame_end, sizeof(original_pad));
 
+
+    save_to_file(pOut->data, pOut->size, "/tmp/a.h264");
+
+
+	
+
+
 	avrc = avcodec_send_packet(state->decoder, input_packet);
 	av_packet_free(&input_packet);
 	if (avrc < 0)
 	{
 		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
 			"video_decoder_decode_frame: avcodec_send_packet failed %d", avrc);
-		return VOD_BAD_DATA;
+		return VOD_OK;
 	}
 
 	// move to the next frame

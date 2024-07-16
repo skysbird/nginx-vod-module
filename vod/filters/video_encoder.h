@@ -11,11 +11,12 @@
 //typedefs
 typedef struct
 {
-	uint64_t channel_layout;
-	uint16_t channels;
-	uint32_t sample_rate;
-	uint32_t timescale;
-	uint32_t bitrate;
+	uint16_t width;
+	uint16_t height;
+	uint16_t sample_aspect_ratio_num;
+	uint16_t sample_aspect_ratio_den;
+	enum AVPixelFormat pix_fmt;
+
 } video_encoder_params_t;
 
 // functions

@@ -42,38 +42,18 @@ video_encoder_is_format_supported(const AVCodec *codec, enum AVSampleFormat samp
 void
 video_encoder_process_init(vod_log_t* log)
 {
-	char** name;
-
 	#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 18, 100)
-		avcodec_register_all();
-	#endif
+        avcodec_register_all();
+    #endif
 
-	for (name = aac_encoder_names; ; name++)
-	{
-		if (*name == NULL)
-		{
-			vod_log_error(VOD_LOG_WARN, log, 0,
-				"video_encoder_process_init: failed to get AAC encoder, video encoding is disabled. recompile libavcodec with an aac encoder to enable it");
-			return;
-		}
+    encoder_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+    if (!encoder_codec) {
+        vod_log_error(VOD_LOG_WARN, log, 0,
+            "video_encoder_process_init: failed to find H.264 encoder, video encoding is disabled.");
+        return;
+    }
 
-		encoder_codec = avcodec_find_encoder_by_name(*name);
-		if (encoder_codec != NULL)
-		{
-			vod_log_error(VOD_LOG_INFO, log, 0,
-				"video_encoder_process_init: using aac encoder \"%s\"", *name);
-			break;
-		}
-	}
-
-	if (!video_encoder_is_format_supported(encoder_codec, video_ENCODER_INPUT_SAMPLE_FORMAT))
-	{
-		vod_log_error(VOD_LOG_WARN, log, 0,
-			"video_encoder_process_init: encoder does not support the required input format, video encoding is disabled");
-		return;
-	}
-
-	initialized = TRUE;
+    initialized = TRUE;
 }
 
 vod_status_t
@@ -113,20 +93,24 @@ video_encoder_init(
 
 	state->encoder = encoder;
 
-	encoder->sample_fmt = video_ENCODER_INPUT_SAMPLE_FORMAT;
+	encoder->height = params->height;
+	encoder->width = params->width;
+	encoder->sample_aspect_ratio.num = 16;
+	encoder->sample_aspect_ratio.den = 15;
+	encoder->pix_fmt = params->pix_fmt;
 	encoder->time_base.num = 1;
-	encoder->time_base.den = params->timescale;
-	encoder->sample_rate = params->sample_rate;
-
-#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
-	av_channel_layout_from_mask(&encoder->ch_layout, params->channel_layout);
-#else
-	encoder->channels = params->channels;
-	encoder->channel_layout = params->channel_layout;
-#endif
-
-	encoder->bit_rate = params->bitrate;
+	encoder->time_base.den = 30;
 	encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
+
+// #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
+// 	av_channel_layout_from_mask(&encoder->ch_layout, params->channel_layout);
+// #else
+// 	encoder->channels = params->channels;
+// 	encoder->channel_layout = params->channel_layout;
+// #endif
+
+// 	encoder->bit_rate = params->bitrate;
+// 	encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
 	avrc = avcodec_open2(encoder, encoder_codec, NULL);
 	if (avrc < 0)

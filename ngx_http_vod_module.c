@@ -3756,7 +3756,7 @@ ngx_http_vod_run_state_machine(ngx_http_vod_ctx_t *ctx)
 			return NGX_OK;
 		}
 
-		// if (ctx->submodule_context.media_set.audio_filtering_needed)
+		if (ctx->submodule_context.media_set.video_filtering_needed)
 		{
 			// initialize the filtering of audio frames
 			ctx->state = STATE_FILTER_FRAMES;

@@ -1,5 +1,6 @@
 #include "video_filter.h"
 #include "rate_filter.h"
+#include "watermark_filter.h"
 
 #if (VOD_HAVE_LIB_AV_CODEC && VOD_HAVE_LIB_AV_FILTER)
 #include <libavcodec/avcodec.h>
@@ -13,15 +14,15 @@
 #include "../input/frames_source_memory.h"
 
 // constants
-#define BUFFERSRC_ARGS_FORMAT ("time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%uxL%Z")
+#define BUFFERSRC_ARGS_FORMAT ("video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d%Z")
 #define MAX_SAMPLE_FORMAT_NAME_LEN (10)
 
-#define BUFFERSRC_FILTER_NAME ("abuffer")
-#define BUFFERSINK_FILTER_NAME ("abuffersink")
+#define BUFFERSRC_FILTER_NAME ("buffer")
+#define BUFFERSINK_FILTER_NAME ("buffersink")
 #define INPUT_FILTER_NAME ("in")
 #define OUTPUT_FILTER_NAME ("out")
 
-#define BUFFERSINK_PARAM_SAMPLE_FORMATS ("sample_fmts")
+#define BUFFERSINK_PARAM_PIX_FORMATS ("pix_fmts")
 #define BUFFERSINK_PARAM_CHANNEL_LAYOUTS ("channel_layouts")
 #define BUFFERSINK_PARAM_SAMPLE_RATES ("sample_rates")
 
@@ -312,29 +313,29 @@ video_filter_init_source(
 
 	// create the buffer source
 	vod_sprintf((u_char*)filter_args, BUFFERSRC_ARGS_FORMAT,
+		decoder->width,
+		decoder->height,
+		decoder->pix_fmt,
 		decoder->time_base.num,
 		decoder->time_base.den,
-		decoder->sample_rate,
-		av_get_sample_fmt_name(decoder->sample_fmt),
-#if LIBAVFILTER_VERSION_INT >= AV_VERSION_INT(8, 44, 100)
-		decoder->ch_layout.u.mask);
-#else
-		decoder->channel_layout);
-#endif
+		decoder->sample_aspect_ratio.num,
+		decoder->sample_aspect_ratio.den
+		);
 
 	avrc = avfilter_graph_create_filter(
 		&source->buffer_src,
 		buffersrc_filter,
-		(char*)source_name,
+		(char*)"in",
 		filter_args,
 		NULL,
 		filter_graph);
 	if (avrc < 0)
 	{
 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"video_filter_init_source: avfilter_graph_create_filter failed %d", avrc);
+			"video_filter_init_source: avfilter_graph_create_filter failed %d", av_err2str(avrc));
 		return VOD_ALLOC_FAILED;
 	}
+	
 
 	// add to the outputs list
 	output_link = avfilter_inout_alloc();
@@ -349,7 +350,7 @@ video_filter_init_source(
 	output_link->next = *outputs;
 	*outputs = output_link;
 
-	output_link->name = av_strdup((char*)source_name);
+	output_link->name = av_strdup((char*)"in");
 	if (output_link->name == NULL)
 	{
 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
@@ -383,7 +384,7 @@ video_filter_init_sink(
 	avrc = avfilter_graph_create_filter(
 		&sink->buffer_sink,
 		buffersink_filter,
-		(char*)sink_name,
+		(char*)"out",
 		NULL,
 		NULL,
 		filter_graph);
@@ -394,14 +395,21 @@ video_filter_init_sink(
 		return VOD_ALLOC_FAILED;
 	}
 
+
+ 	// if (avfilter_graph_create_filter(&sink->buffer_sink,, buffersink_filter, "out", NULL, NULL, filter_graph) < 0) {
+    //     printf("Cannot create buffer sink\n");
+    //     return VOD_ALLOC_FAILED;
+    // }
+
 	// configure the buffer sink
-	out_sample_fmts[0] = sink->encoder->format;
-	out_sample_fmts[1] = -1;
+	// out_sample_fmts[0] = sink->encoder->format;
+	// out_sample_fmts[1] = -1;
+	enum AVPixelFormat pix_fmts[] = { AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE };
 	avrc = av_opt_set_int_list(
 		sink->buffer_sink,
-		BUFFERSINK_PARAM_SAMPLE_FORMATS,
-		out_sample_fmts,
-		-1,
+		BUFFERSINK_PARAM_PIX_FORMATS,
+		pix_fmts,
+		AV_PIX_FMT_NONE,
 		AV_OPT_SEARCH_CHILDREN);
 	if (avrc < 0)
 	{
@@ -410,35 +418,35 @@ video_filter_init_sink(
 		return VOD_UNEXPECTED;
 	}
 
-	out_channel_layouts[0] = channel_layout;
-	out_channel_layouts[1] = -1;
-	avrc = av_opt_set_int_list(
-		sink->buffer_sink,
-		BUFFERSINK_PARAM_CHANNEL_LAYOUTS,
-		out_channel_layouts,
-		-1,
-		AV_OPT_SEARCH_CHILDREN);
-	if (avrc < 0)
-	{
-		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"video_filter_init_sink: av_opt_set_int_list(channel layouts) failed %d", avrc);
-		return VOD_UNEXPECTED;
-	}
+	// out_channel_layouts[0] = channel_layout;
+	// out_channel_layouts[1] = -1;
+	// avrc = av_opt_set_int_list(
+	// 	sink->buffer_sink,
+	// 	BUFFERSINK_PARAM_CHANNEL_LAYOUTS,
+	// 	out_channel_layouts,
+	// 	-1,
+	// 	AV_OPT_SEARCH_CHILDREN);
+	// if (avrc < 0)
+	// {
+	// 	vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+	// 		"video_filter_init_sink: av_opt_set_int_list(channel layouts) failed %d", avrc);
+	// 	return VOD_UNEXPECTED;
+	// }
 
-	out_sample_rates[0] = sample_rate;
-	out_sample_rates[1] = -1;
-	avrc = av_opt_set_int_list(
-		sink->buffer_sink,
-		BUFFERSINK_PARAM_SAMPLE_RATES,
-		out_sample_rates,
-		-1,
-		AV_OPT_SEARCH_CHILDREN);
-	if (avrc < 0)
-	{
-		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"video_filter_init_sink: av_opt_set_int_list(sample rates) failed %d", avrc);
-		return VOD_UNEXPECTED;
-	}
+	// out_sample_rates[0] = sample_rate;
+	// out_sample_rates[1] = -1;
+	// avrc = av_opt_set_int_list(
+	// 	sink->buffer_sink,
+	// 	BUFFERSINK_PARAM_SAMPLE_RATES,
+	// 	out_sample_rates,
+	// 	-1,
+	// 	AV_OPT_SEARCH_CHILDREN);
+	// if (avrc < 0)
+	// {
+	// 	vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+	// 		"video_filter_init_sink: av_opt_set_int_list(sample rates) failed %d", avrc);
+	// 	return VOD_UNEXPECTED;
+	// }
 
 	// add to the inputs list
 	input_link = avfilter_inout_alloc();
@@ -454,7 +462,7 @@ video_filter_init_sink(
 	input_link->next = *inputs;
 	*inputs = input_link;
 
-	input_link->name = av_strdup((const char*)sink_name);
+	input_link->name = av_strdup((const char*)"out");
 	if (input_link->name == NULL)
 	{
 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
@@ -466,7 +474,7 @@ video_filter_init_sink(
 }
 
 static vod_status_t 
-video_filter_init_sources_and_graph_desc(video_filter_init_context_t* state, media_clip_t* clip)
+video_filter_init_sources_and_graph_desc(video_filter_init_context_t* state, media_clip_t* clip, media_track_t *output_track)
 {
 	video_filter_source_t* cur_source;
 	media_clip_t** sources_end;
@@ -485,7 +493,7 @@ video_filter_init_sources_and_graph_desc(video_filter_init_context_t* state, med
 		video_track = NULL;
 		for (cur_track = source->track_array.first_track; cur_track < source->track_array.last_track; cur_track++)
 		{
-			if (cur_track->media_info.media_type == MEDIA_TYPE_AUDIO)
+			if (cur_track->media_info.media_type == MEDIA_TYPE_VIDEO)
 			{
 				video_track = cur_track;
 				break;
@@ -525,7 +533,7 @@ video_filter_init_sources_and_graph_desc(video_filter_init_context_t* state, med
 			continue;
 		}
 
-		rc = video_filter_init_sources_and_graph_desc(state, *sources_cur);
+		rc = video_filter_init_sources_and_graph_desc(state, *sources_cur, output_track);
 		if (rc != VOD_OK)
 		{
 			return rc;
@@ -538,6 +546,9 @@ video_filter_init_sources_and_graph_desc(video_filter_init_context_t* state, med
 		*state->graph_desc_pos++ = ';';
 	}
 
+	media_clip_watermark_filter_t* filter = vod_container_of(clip, media_clip_watermark_filter_t, base);
+
+	filter->media_info = &output_track->media_info;
 	state->graph_desc_pos = clip->video_filter->append_filter_desc(state->graph_desc_pos, clip);
 
 	return VOD_OK;
@@ -658,7 +669,7 @@ video_filter_alloc_state(
 	init_context.graph_desc_pos = init_context.graph_desc;
 	init_context.cache_slot_id = 0;
 
-	rc = video_filter_init_sources_and_graph_desc(&init_context, clip);
+	rc = video_filter_init_sources_and_graph_desc(&init_context, clip, output_track);
 	if (rc != VOD_OK)
 	{
 		goto end;
@@ -693,11 +704,13 @@ video_filter_alloc_state(
 	}
 
 	// parse the graph description
-	avrc = avfilter_graph_parse_ptr(state->filter_graph, (char*)init_context.graph_desc, &inputs, &outputs, NULL);
+	// avrc = avfilter_graph_parse_ptr(state->filter_graph, (char*)init_context.graph_desc, &inputs, &outputs, NULL);
+
+	avrc = avfilter_graph_parse_ptr(state->filter_graph, (char*)init_context.graph_desc, &inputs, &outputs,NULL);
 	if (avrc < 0)
 	{
 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"video_filter_alloc_state: avfilter_graph_parse_ptr failed %d", avrc);
+			"video_filter_alloc_state: avfilter_graph_parse_ptr failed %d", av_err2str(avrc));
 		rc = VOD_UNEXPECTED;
 		goto end;
 	}
@@ -707,7 +720,7 @@ video_filter_alloc_state(
 	if (avrc < 0)
 	{
 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"video_filter_alloc_state: avfilter_graph_config failed %d", avrc);
+			"video_filter_alloc_state: avfilter_graph_config failed %s",  av_err2str(avrc));
 		rc = VOD_UNEXPECTED;
 		goto end;
 	}
@@ -737,16 +750,26 @@ video_filter_alloc_state(
 	}
 	else
 	{
-#if LIBAVFILTER_VERSION_INT >= AV_VERSION_INT(8, 44, 100)
-		encoder_params.channels = sink_link->ch_layout.nb_channels;
-		encoder_params.channel_layout = sink_link->ch_layout.u.mask;
-#else
-		encoder_params.channels = sink_link->channels;
-		encoder_params.channel_layout = sink_link->channel_layout;
-#endif
-		encoder_params.sample_rate = sink_link->sample_rate;
-		encoder_params.timescale = sink_link->time_base.den;
-		encoder_params.bitrate = output_track->media_info.bitrate;
+// #if LIBAVFILTER_VERSION_INT >= AV_VERSION_INT(8, 44, 100)
+// 		encoder_params.channels = sink_link->ch_layout.nb_channels;
+// 		encoder_params.channel_layout = sink_link->ch_layout.u.mask;
+// #else
+// 		encoder_params.channels = sink_link->channels;
+// 		encoder_params.channel_layout = sink_link->channel_layout;
+// #endif
+// 		encoder_params.sample_rate = sink_link->sample_rate;
+// 		encoder_params.timescale = sink_link->time_base.den;
+// 		encoder_params.bitrate = output_track->media_info.bitrate;
+
+
+
+		encoder_params.width = output_track->media_info.u.video.width;
+		encoder_params.height = output_track->media_info.u.video.height;
+
+		encoder_params.pix_fmt = AV_PIX_FMT_YUV420P;
+
+		// encoder_params->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
+
 
 		rc = video_encoder_init(
 			request_context,

@@ -387,7 +387,7 @@ audio_filter_init_sink(
 
 	// Note: matching the output to some reference track, may need to change in the future
 	//		if filters such as 'join' will be added
-
+	
 	// create the buffer sink
 	avrc = avfilter_graph_create_filter(
 		&sink->buffer_sink,

@@ -24,6 +24,8 @@ typedef struct {
 	uint32_t cur_frame_pos;
 	bool_t data_handled;
 	bool_t frame_started;
+	vod_str_t extra_data;
+	
 } video_decoder_state_t;
 
 // functions

@@ -3213,7 +3213,7 @@ mp4_parser_parse_frames(
 	vod_array_t tracks;
 	uint64_t last_offset;
 	uint32_t media_type;
-
+	//mp4原始读取frames
 	if (vod_array_init(&tracks, request_context->pool, 2, sizeof(media_track_t)) != VOD_OK)
 	{
 		vod_log_debug0(VOD_LOG_DEBUG_LEVEL, request_context->log, 0,
