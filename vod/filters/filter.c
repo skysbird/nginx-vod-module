@@ -562,16 +562,16 @@ filter_run_state_machine(void* context)
 	{
 		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
 				"media_type=%d",state->cur_track->media_info.media_type);
+
+		
 		if (state->cur_track->media_info.media_type != MEDIA_TYPE_VIDEO) {
-			state->cur_track++;
-			continue;
+			return VOD_OK;
 		}
 		
-		// media_track_t* video_track = state->cur_track+1;
 		
 		if (state->video_filter != NULL)
 		{
-			// run the audio filter
+			// run the video filter
 			rc = video_filter_process(state->video_filter);
 			if (rc != VOD_OK)
 			{

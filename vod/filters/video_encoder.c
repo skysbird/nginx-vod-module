@@ -282,7 +282,7 @@ video_encoder_write_frame(
 		return VOD_ALLOC_FAILED;
 	}
 
-	// save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
+	save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
 
 	rc = video_encoder_write_packet(state, output_packet);
 
