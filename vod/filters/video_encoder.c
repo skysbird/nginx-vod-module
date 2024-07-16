@@ -93,13 +93,18 @@ video_encoder_init(
 
 	state->encoder = encoder;
 
+	encoder->gop_size = 10; 
+	encoder->has_b_frames = 0;
+	encoder->max_b_frames = 0;
+
 	encoder->height = params->height;
 	encoder->width = params->width;
-	encoder->sample_aspect_ratio.num = 16;
-	encoder->sample_aspect_ratio.den = 15;
-	encoder->pix_fmt = params->pix_fmt;
+	encoder->sample_aspect_ratio.num = 0;
+	encoder->sample_aspect_ratio.den = 1;
+	encoder->codec_id = encoder_codec->id;
+	encoder->pix_fmt = *(encoder_codec->pix_fmts);
 	encoder->time_base.num = 1;
-	encoder->time_base.den = 30;
+	encoder->time_base.den = 25600;
 	encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
 // #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
@@ -200,6 +205,31 @@ static void save_to_file(u_char* buffer, int size, const char* filename) {
     fclose(file);
 }
 
+// Save AVFrame to YUV file
+void save_frame_to_yuv(AVFrame *frame, const char *filename) {
+    FILE *file = fopen(filename, "wb");
+    if (!file) {
+        fprintf(stderr, "Could not open %s\n", filename);
+        return;
+    }
+
+    // Write Y plane
+    for (int y = 0; y < frame->height; y++) {
+        fwrite(frame->data[0] + y * frame->linesize[0], 1, frame->width, file);
+    }
+
+    // Write U plane
+    for (int y = 0; y < frame->height / 2; y++) {
+        fwrite(frame->data[1] + y * frame->linesize[1], 1, frame->width / 2, file);
+    }
+
+    // Write V plane
+    for (int y = 0; y < frame->height / 2; y++) {
+        fwrite(frame->data[2] + y * frame->linesize[2], 1, frame->width / 2, file);
+    }
+
+    fclose(file);
+}
 
 vod_status_t
 video_encoder_write_frame(
@@ -211,7 +241,8 @@ video_encoder_write_frame(
 	AVPacket* output_packet;
 	int avrc;
 
-	
+	// save_frame_to_yuv(frame,"/tmp/en.h264");
+
 	// send frame
 	avrc = avcodec_send_frame(state->encoder, frame);
 
