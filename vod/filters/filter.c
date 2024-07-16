@@ -193,7 +193,8 @@ filter_scale_video_tracks(filters_init_state_t* state, media_clip_t* clip, uint3
 				{
 					state->has_video_frames = TRUE;
 				}
-				break;
+				// break;
+				//fall out
 
 			default:
 				new_track = filter_copy_track_to_clip(state, cur_track);
