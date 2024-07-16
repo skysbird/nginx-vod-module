@@ -93,7 +93,7 @@ video_encoder_init(
 
 	state->encoder = encoder;
 
-	encoder->gop_size = 10; 
+	encoder->gop_size = 1; 
 	encoder->has_b_frames = 0;
 	encoder->max_b_frames = 0;
 
@@ -105,7 +105,7 @@ video_encoder_init(
 	encoder->pix_fmt = *(encoder_codec->pix_fmts);
 	encoder->time_base.num = 1;
 	encoder->time_base.den = 25600;
-	encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
+	// encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
 // #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
 // 	av_channel_layout_from_mask(&encoder->ch_layout, params->channel_layout);
@@ -281,6 +281,7 @@ video_encoder_write_frame(
 		av_packet_free(&output_packet);
 		return VOD_ALLOC_FAILED;
 	}
+
 	// save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
 
 	rc = video_encoder_write_packet(state, output_packet);
