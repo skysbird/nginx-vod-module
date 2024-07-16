@@ -193,7 +193,7 @@ filter_scale_video_tracks(filters_init_state_t* state, media_clip_t* clip, uint3
 				{
 					state->has_video_frames = TRUE;
 				}
-				// break;
+				break;
 				//fall out
 
 			default:
@@ -438,25 +438,6 @@ filter_init_filtered_clips(
 				}
 			}
 
-			// if (init_state.audio_reference_track != NULL)
-			// {
-			// 	// add the audio filter output track
-			// 	new_track = filter_copy_track_to_clip(&init_state, init_state.audio_reference_track);
-			// 	if (init_state.audio_reference_track_speed_num != init_state.audio_reference_track_speed_denom)
-			// 	{
-			// 		rate_filter_scale_track_timestamps(
-			// 			new_track,
-			// 			init_state.audio_reference_track_speed_num,
-			// 			init_state.audio_reference_track_speed_denom);
-			// 	}
-
-			// 	if (!parsed_frames || init_state.has_audio_frames)
-			// 	{
-			// 		new_track->source_clip = input_clip;
-			// 		media_set->audio_filtering_needed = TRUE;
-			// 	}
-			// }
-
 
 			if (init_state.video_reference_track != NULL)
 			{
@@ -478,6 +459,26 @@ filter_init_filtered_clips(
 					media_set->video_filtering_needed = TRUE;
 				}
 			}
+
+			if (init_state.audio_reference_track != NULL)
+			{
+				// add the audio filter output track
+				new_track = filter_copy_track_to_clip(&init_state, init_state.audio_reference_track);
+				if (init_state.audio_reference_track_speed_num != init_state.audio_reference_track_speed_denom)
+				{
+					rate_filter_scale_track_timestamps(
+						new_track,
+						init_state.audio_reference_track_speed_num,
+						init_state.audio_reference_track_speed_denom);
+				}
+
+				if (!parsed_frames || init_state.has_audio_frames)
+				{
+					new_track->source_clip = input_clip;
+					media_set->audio_filtering_needed = TRUE;
+				}
+			}
+
 
 			output_clip->last_track = init_state.output_track;
 
@@ -561,7 +562,10 @@ filter_run_state_machine(void* context)
 	{
 		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
 				"media_type=%d",state->cur_track->media_info.media_type);
-
+		if (state->cur_track->media_info.media_type != MEDIA_TYPE_VIDEO) {
+			state->cur_track++;
+			continue;
+		}
 		
 		// media_track_t* video_track = state->cur_track+1;
 		
