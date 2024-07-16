@@ -357,10 +357,7 @@ video_decoder_decode_frame(
 	vod_memzero(frame_end, sizeof(original_pad));
 
 
-    save_to_file(pOut->data, pOut->size, "/tmp/a.h264");
-
-
-	
+    // save_to_file(pOut->data, pOut->size, "/tmp/a.h264");
 
 
 	avrc = avcodec_send_packet(state->decoder, input_packet);

@@ -185,6 +185,22 @@ video_encoder_write_packet(
 	return VOD_OK;
 }
 
+
+
+static void save_to_file(u_char* buffer, int size, const char* filename) {
+    FILE* file = fopen(filename, "wb");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+    size_t written = fwrite(buffer, 1, size, file);
+    if (written != size) {
+        perror("Error writing to file");
+    }
+    fclose(file);
+}
+
+
 vod_status_t
 video_encoder_write_frame(
 	void* context,
@@ -195,10 +211,13 @@ video_encoder_write_frame(
 	AVPacket* output_packet;
 	int avrc;
 
+	
 	// send frame
 	avrc = avcodec_send_frame(state->encoder, frame);
 
+
 	av_frame_unref(frame);
+
 
 	if (avrc < 0)
 	{
@@ -231,6 +250,7 @@ video_encoder_write_frame(
 		av_packet_free(&output_packet);
 		return VOD_ALLOC_FAILED;
 	}
+	// save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
 
 	rc = video_encoder_write_packet(state, output_packet);
 
