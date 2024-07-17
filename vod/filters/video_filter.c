@@ -933,7 +933,7 @@ video_filter_update_track(video_filter_state_t* state)
 
 	output->media_info.duration = rescale_time(output->media_info.duration, old_timescale, output->media_info.timescale);
 
-	output->key_frame_count = 0;
+	// output->key_frame_count = 0;
 	output->first_frame_time_offset = rescale_time(output->first_frame_time_offset, old_timescale, output->media_info.timescale);
 
 	if (output->media_info.codec_name.data != NULL)

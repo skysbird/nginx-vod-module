@@ -53,13 +53,13 @@ hls_muxer_init_track(
 	switch (track->media_info.media_type)
 	{
 	case MEDIA_TYPE_VIDEO:
-		// rc = mp4_to_annexb_set_media_info(
-		// 	&cur_stream->filter_context, 
-		// 	&track->media_info);
-		// if (rc != VOD_OK)
-		// {
-		// 	return rc;
-		// }
+		rc = mp4_to_annexb_set_media_info(
+			&cur_stream->filter_context, 
+			&track->media_info);
+		if (rc != VOD_OK)
+		{
+			return rc;
+		}
 
 		// if (state->align_pts)
 		// {
@@ -361,14 +361,14 @@ hls_muxer_init_base(
 			// }
 
 
-			// rc = mp4_to_annexb_init(
-			// 	&cur_stream->filter,
-			// 	&cur_stream->filter_context,
-			// 	encryption_params);
-			// if (rc != VOD_OK)
-			// {
-			// 	return rc;
-			// }
+			rc = mp4_to_annexb_init(
+				&cur_stream->filter,
+				&cur_stream->filter_context,
+				encryption_params);
+			if (rc != VOD_OK)
+			{
+				return rc;
+			}
 
 			// if (track->media_info.codec_id >= VOD_CODEC_ID_VIDEO && track->media_info.codec_id<=VOD_CODEC_ID_AV1 )
 			// {

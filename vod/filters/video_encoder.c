@@ -424,22 +424,22 @@ video_encoder_update_media_info(
 		return VOD_UNEXPECTED;
 	}
 
-	media_info->timescale = encoder->time_base.den;
+	// media_info->timescale = encoder->time_base.den;
 	media_info->bitrate = encoder->bit_rate;
 
-	media_info->u.audio.object_type_id = 0x40;		// ffmpeg always writes 0x40 (ff_mp4_obj_type)
+	// media_info->u.audio.object_type_id = 0x40;		// ffmpeg always writes 0x40 (ff_mp4_obj_type)
 
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
-	media_info->u.audio.channels = encoder->ch_layout.nb_channels;
-	media_info->u.audio.channel_layout = encoder->ch_layout.u.mask;
+	// media_info->u.audio.channels = encoder->ch_layout.nb_channels;
+	// media_info->u.audio.channel_layout = encoder->ch_layout.u.mask;
 #else
-	media_info->u.audio.channels = encoder->channels;
-	media_info->u.audio.channel_layout = encoder->channel_layout;
+	// media_info->u.audio.channels = encoder->channels;
+	// media_info->u.audio.channel_layout = encoder->channel_layout;
 #endif
 
-	media_info->u.audio.bits_per_sample = video_ENCODER_BITS_PER_SAMPLE;
-	media_info->u.audio.packet_size = 0;			// ffmpeg always writes 0 (mov_write_video_tag)
-	media_info->u.audio.sample_rate = encoder->sample_rate;
+	// media_info->u.audio.bits_per_sample = video_ENCODER_BITS_PER_SAMPLE;
+	// media_info->u.audio.packet_size = 0;			// ffmpeg always writes 0 (mov_write_video_tag)
+	// media_info->u.audio.sample_rate = encoder->sample_rate;
 
 	new_extra_data = vod_alloc(state->request_context->pool, encoder->extradata_size);
 	if (new_extra_data == NULL)
