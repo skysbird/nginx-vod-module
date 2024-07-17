@@ -757,9 +757,14 @@ video_filter_alloc_state(
 // 		encoder_params.channels = sink_link->channels;
 // 		encoder_params.channel_layout = sink_link->channel_layout;
 // #endif
-// 		encoder_params.sample_rate = sink_link->sample_rate;
+		encoder_params.time_base = sink_link->time_base;
 // 		encoder_params.timescale = sink_link->time_base.den;
 // 		encoder_params.bitrate = output_track->media_info.bitrate;
+
+		// encoder_params.time_base.num = 1;
+		// encoder_params.time_base.den = 90000;
+
+
 
 
 
@@ -768,8 +773,10 @@ video_filter_alloc_state(
 
 		encoder_params.pix_fmt = AV_PIX_FMT_YUV420P;
 
+		
 		// encoder_params->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
+		//TODO init_context 有decoder
 
 		rc = video_encoder_init(
 			request_context,
@@ -881,7 +888,8 @@ video_filter_update_track(video_filter_state_t* state)
 	last_frame = output->frames.last_frame;
 	for (cur_frame = output->frames.first_frame; cur_frame < last_frame; cur_frame++)
 	{
-		if (cur_frame->duration != 0)
+
+		if (cur_frame->duration != 0) //FIXME 这个判断导致frames被清空,ffmpeg没拿到duration
 		{
 			has_frames = TRUE;
 			break;
@@ -1138,7 +1146,7 @@ video_filter_process(void* context)
 						return rc;
 					}
 				}
-
+				//TODO 这里导致frames空
 				return video_filter_update_track(state);
 			}
 

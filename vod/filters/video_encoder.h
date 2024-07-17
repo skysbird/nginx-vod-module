@@ -16,6 +16,7 @@ typedef struct
 	uint16_t sample_aspect_ratio_num;
 	uint16_t sample_aspect_ratio_den;
 	enum AVPixelFormat pix_fmt;
+    AVRational time_base;
 
 } video_encoder_params_t;
 

@@ -3779,7 +3779,7 @@ ngx_http_vod_run_state_machine(ngx_http_vod_ctx_t *ctx)
 			else
 #endif // NGX_HAVE_LIB_AV_CODEC
 			{
-				output_codec_id = VOD_CODEC_ID_AAC;
+				output_codec_id = VOD_CODEC_ID_VIDEO;
 			}
 
 			rc = filter_init_state(

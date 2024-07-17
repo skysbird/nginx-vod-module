@@ -175,10 +175,12 @@ video_decoder_init_decoder(
 
 	state->decoder = decoder;	
 	state->extra_data = media_info->extra_data;
-	
+	// decoder->extradata = media_info->extra_data.data;
+	// decoder->extradata_size = media_info->extra_data.len;
+
 	decoder->codec_tag = media_info->format;
 	decoder->time_base.num = 1;
-	decoder->time_base.den = media_info->frames_timescale;
+	decoder->time_base.den = media_info->frames_timescale/1000;
 	decoder->codec_id = get_ffmpeg_decoder_id(media_info->codec_id);
     decoder->codec_type = AVMEDIA_TYPE_VIDEO;
     decoder->width = media_info->u.video.width;
@@ -298,6 +300,167 @@ static void save_to_file(u_char* buffer, int size, const char* filename) {
     fclose(file);
 }
 
+/* 获取SPS与PPS */
+static int h264_extradata_to_annexb(const unsigned char *pCodecExtraData,  const int codecExtraDataSize, 
+                                AVPacket *pOutExtradata, int padding)
+{
+    const unsigned char *pExtraData = NULL; /* 前四个字节没用 */
+    int len = 0;
+    int spsUnitNum, ppsUnitNum;
+    int unitSize, totolSize = 0;
+    unsigned char startCode[] = {0, 0, 0, 1};
+    unsigned char *pOut = NULL;
+    int err;
+
+    pExtraData = pCodecExtraData+4;
+    len = (*pExtraData++ & 0x3) + 1;
+
+    /* 获取SPS */
+    spsUnitNum = (*pExtraData++ & 0x1f); /* SPS数量 */
+    while(spsUnitNum--)
+    {
+        unitSize = (pExtraData[0]<<8 | pExtraData[1]); /* 两个字节表示这个unit的长度 */
+        pExtraData += 2;
+        totolSize += unitSize + sizeof(startCode);
+        printf("unitSize:%d\n", unitSize);
+
+        if(totolSize > INT_MAX - padding) 
+        {
+            av_log(NULL, AV_LOG_ERROR,
+                   "Too big extradata size, corrupted stream or invalid MP4/AVCC bitstream\n");
+            av_free(pOut);
+            return AVERROR(EINVAL);
+        }
+
+        if(pExtraData + unitSize > pCodecExtraData + codecExtraDataSize) 
+        {
+            av_log(NULL, AV_LOG_ERROR, "Packet header is not contained in global extradata, "
+                   "corrupted stream or invalid MP4/AVCC bitstream\n");
+            av_free(pOut);
+            return AVERROR(EINVAL);
+        }
+
+        if((err = av_reallocp(&pOut, totolSize + padding)) < 0)
+            return err;
+        
+        
+        memcpy(pOut+totolSize-unitSize-sizeof(startCode), startCode, sizeof(startCode));
+        memcpy(pOut+totolSize-unitSize, pExtraData, unitSize);
+
+        pExtraData += unitSize;
+    }
+
+    /* 获取PPS */
+    ppsUnitNum = (*pExtraData++ & 0x1f); /* PPS数量 */
+    while(ppsUnitNum--) 
+    {
+        unitSize = (pExtraData[0]<<8 | pExtraData[1]); /* 两个字节表示这个unit的长度 */
+        pExtraData += 2;
+        totolSize += unitSize + sizeof(startCode);
+        printf("unitSize:%d\n", unitSize);
+
+        if(totolSize > INT_MAX - padding) 
+        {
+            av_log(NULL, AV_LOG_ERROR,
+                   "Too big extradata size, corrupted stream or invalid MP4/AVCC bitstream\n");
+            av_free(pOut);
+            return AVERROR(EINVAL);
+        }
+
+        if(pExtraData + unitSize > pCodecExtraData + codecExtraDataSize) 
+        {
+            av_log(NULL, AV_LOG_ERROR, "Packet header is not contained in global extradata, "
+                   "corrupted stream or invalid MP4/AVCC bitstream\n");
+            av_free(pOut);
+            return AVERROR(EINVAL);
+        }
+
+        if((err = av_reallocp(&pOut, totolSize + padding)) < 0)
+            return err;
+        
+        
+        memcpy(pOut+totolSize-unitSize-sizeof(startCode), startCode, sizeof(startCode));
+        memcpy(pOut+totolSize-unitSize, pExtraData, unitSize);
+
+        pExtraData += unitSize;
+    }
+
+    pOutExtradata->data = pOut;
+    pOutExtradata->size = totolSize;
+
+    return len;
+}
+static int annexb_to_h264_extradata(const unsigned char *pOutExtradata, const int extradataSize, 
+                                    unsigned char **pCodecExtraData, int *codecExtraDataSize)
+{
+    const unsigned char *pExtradata = pOutExtradata;
+    const unsigned char startCode[] = {0, 0, 0, 1};
+    int spsCount = 0, ppsCount = 0;
+    int totalSize = 0;
+    unsigned char *pExtraData = NULL;
+    unsigned char *pOut = NULL;
+    int unitSize, len;
+    int remainingExtradataSize = extradataSize;
+    int err;
+
+    // Allocate initial memory for extradata (add 4 bytes for the front)
+    pExtraData = malloc(extradataSize + 4 + 10); // 4 for unused data, 10 for headers
+    if (!pExtraData) {
+        return -1;
+    }
+
+    pOut = pExtraData + 4;
+    len = 0;
+
+    while (remainingExtradataSize > 4) {
+        if (memcmp(pExtradata, startCode, sizeof(startCode)) != 0) {
+            printf("Invalid start code in Annex B format\n");
+            free(pExtraData);
+            return -1;
+        }
+        pExtradata += 4;
+        remainingExtradataSize -= 4;
+
+        unitSize = 0;
+        while (remainingExtradataSize > 0 && memcmp(pExtradata, startCode, sizeof(startCode)) != 0) {
+            unitSize++;
+            remainingExtradataSize--;
+            pExtradata++;
+        }
+
+        if (unitSize > 0) {
+            if ((pExtradata[-unitSize] & 0x1f) == 7) { // SPS
+                spsCount++;
+            } else if ((pExtradata[-unitSize] & 0x1f) == 8) { // PPS
+                ppsCount++;
+            }
+
+            if (len + unitSize + 2 > extradataSize) {
+                free(pExtraData);
+                return -1;
+            }
+
+            pOut[len++] = (unitSize >> 8) & 0xff;
+            pOut[len++] = unitSize & 0xff;
+            memcpy(pOut + len, pExtradata - unitSize, unitSize);
+            len += unitSize;
+        }
+    }
+
+    // Write the SPS and PPS counts and headers
+    pExtraData[0] = 0x01;  // configurationVersion
+    pExtraData[1] = 0x64;  // AVCProfileIndication
+    pExtraData[2] = 0x00;  // profile_compatibility
+    pExtraData[3] = 0x1f;  // AVCLevelIndication
+    pExtraData[4] = 0xff;  // lengthSizeMinusOne
+    pExtraData[5] = 0xe1;  // numOfSequenceParameterSets
+    pExtraData[6] = (spsCount & 0x1f);  // numOfSequenceParameterSets
+    pExtraData[7] = (ppsCount & 0x1f);  // numOfPictureParameterSets
+
+    // Update the output pointers
+    *pCodecExtraData = pExtraData;
+    *codecExtraDataSize = len + 4;
+}
 
 static vod_status_t
 video_decoder_decode_frame(
@@ -323,13 +486,29 @@ video_decoder_decode_frame(
 		return VOD_ALLOC_FAILED;
 	}
 
-	AVPacket pAvPkt;
-	AVPacket *pOut;
 
-	pAvPkt.data = state->extra_data.data;
-	pAvPkt.size = state->extra_data.len;
+	//FIXME extradata
 
-	h264Mp4ToAnnexb(buffer, frame->size, &pAvPkt, &pOut);
+
+
+	// unsigned char ** pout;
+	// int poutSize;
+
+	// h264_extradata_to_annexb(state->extra_data.data,
+    //                         state->extra_data.len,
+    //                         &spsppsPkt, AV_INPUT_BUFFER_PADDING_SIZE);
+
+	// annexb_to_h264_extradata(state->extra_data.data,
+	// 	state->extra_data.len,
+	// 	&pout,&poutSize);
+	AVPacket *pAvPkt;
+
+    AVPacket spsppsPkt;
+	spsppsPkt.data = state->extra_data.data;;
+	spsppsPkt.size = state->extra_data.len;;
+
+
+	h264Mp4ToAnnexb(buffer, frame->size, &spsppsPkt, &pAvPkt);
 	// uint8_t *out_data = NULL;
 	// int out_size = 0;
 
@@ -340,10 +519,12 @@ video_decoder_decode_frame(
 	// 		"av_bitstream_filter_filter: av_bitstream_filter_filter failed %d", av_err2str(avrc));
 	// 	return VOD_OK;
 	// }
-
+	// state->decoder->extradata = state->extra_data.data;
+	// state->decoder->extradata_size = state->extra_data.len;
+	// save_to_file(pout,poutSize,"/tmp/d.bin");
 	// send a frame
-	input_packet->data = pOut->data;
-	input_packet->size = pOut->size;
+	input_packet->data = pAvPkt->data;
+	input_packet->size = pAvPkt->size;
 	input_packet->dts = state->dts;
 	input_packet->pts = state->dts + frame->pts_delay;
 	input_packet->duration = frame->duration;

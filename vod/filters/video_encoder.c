@@ -10,6 +10,7 @@ typedef struct
 	request_context_t* request_context;
 	vod_array_t* frames_array;
 	AVCodecContext *encoder;
+	int last_pts;
 } video_encoder_state_t;
 
 // globals
@@ -92,19 +93,23 @@ video_encoder_init(
 	}
 
 	state->encoder = encoder;
+	// state->media_info = media_info;
 
 	encoder->gop_size = 1; 
-	encoder->has_b_frames = 0;
-	encoder->max_b_frames = 0;
+	// encoder->has_b_frames = 0;
+	// encoder->max_b_frames = 0;
 
 	encoder->height = params->height;
 	encoder->width = params->width;
-	encoder->sample_aspect_ratio.num = 0;
-	encoder->sample_aspect_ratio.den = 1;
+	encoder->sample_aspect_ratio.num = 16;
+	encoder->sample_aspect_ratio.den = 15;
 	encoder->codec_id = encoder_codec->id;
 	encoder->pix_fmt = *(encoder_codec->pix_fmts);
-	encoder->time_base.num = 1;
-	encoder->time_base.den = 25600;
+	encoder->time_base = params->time_base;
+	// encoder->bit_rate = 400000;
+	encoder->framerate.num = 1;
+	encoder->framerate.den = 25;
+
 	// encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
 // #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 23, 100)
@@ -128,6 +133,8 @@ video_encoder_init(
 
 	state->request_context = request_context;
 	state->frames_array = frames_array;
+	state->last_pts = 0;
+
 
 	*result = state;
 
@@ -162,6 +169,50 @@ video_encoder_get_frame_size(void* context)
 	return state->encoder->frame_size;
 }
 
+
+static void save_to_file(u_char* buffer, int size, const char* filename) {
+    FILE* file = fopen(filename, "ab");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+    size_t written = fwrite(buffer, 1, size, file);
+    if (written != size) {
+        perror("Error writing to file");
+    }
+    fclose(file);
+}
+
+// 写入AVCC格式
+static void write_avcc(uint8_t **out_buf, int *out_size, const uint8_t *data, int size) {
+    uint32_t nalu_size = htonl(size);
+    *out_buf = realloc(*out_buf, *out_size + 4 + size);
+    memcpy(*out_buf + *out_size, &nalu_size, 4);
+    memcpy(*out_buf + *out_size + 4, data, size);
+    *out_size += 4 + size;
+}
+
+// 将Annex B格式转换为AVCC格式
+static void convert_annexb_to_avcc(const uint8_t *buffer, int buffer_size, uint8_t **out_buf, int *out_size) {
+    int i = 0;
+    while (i < buffer_size) {
+        if (i + 4 > buffer_size) break; // Ensure there is enough data for the start code
+
+        // Find the start code (0x00000001)
+        if (buffer[i] == 0x00 && buffer[i + 1] == 0x00 && buffer[i + 2] == 0x00 && buffer[i + 3] == 0x01) {
+            int j = i + 4;
+            while (j + 4 <= buffer_size && !(buffer[j] == 0x00 && buffer[j + 1] == 0x00 && buffer[j + 2] == 0x00 && buffer[j + 3] == 0x01)) {
+                j++;
+            }
+            int nalu_size = j - (i + 4);
+            write_avcc(out_buf, out_size, buffer + i + 4, nalu_size);
+            i = j;
+        } else {
+            i++;
+		}
+    }
+}
+
 static vod_status_t
 video_encoder_write_packet(
 	video_encoder_state_t* state,
@@ -171,6 +222,11 @@ video_encoder_write_packet(
 	vod_status_t rc;
 	void* data;
 
+	uint8_t *out_buf;
+	int out_size;
+
+	//to avcc
+	// convert_annexb_to_avcc(output_packet->data, output_packet->size, &out_buf, &out_size);
 	rc = video_filter_alloc_memory_frame(
 		state->request_context,
 		state->frames_array,
@@ -184,26 +240,17 @@ video_encoder_write_packet(
 	data = (void*)(uintptr_t)cur_frame->offset;
 	vod_memcpy(data, output_packet->data, output_packet->size);
 
+
+	save_to_file(output_packet->data, output_packet->size, "/tmp/avcc.ts"); //保存非avcc可直接拨
+	save_to_file(state->encoder->extradata, state->encoder->extradata_size, "/tmp/extra.bin"); //保存非avcc可直接拨
+
 	cur_frame->duration = output_packet->duration;
 	cur_frame->pts_delay = output_packet->pts - output_packet->dts;
-
+	
 	return VOD_OK;
 }
 
 
-
-static void save_to_file(u_char* buffer, int size, const char* filename) {
-    FILE* file = fopen(filename, "wb");
-    if (file == NULL) {
-        perror("Error opening file");
-        return;
-    }
-    size_t written = fwrite(buffer, 1, size, file);
-    if (written != size) {
-        perror("Error writing to file");
-    }
-    fclose(file);
-}
 
 // Save AVFrame to YUV file
 void save_frame_to_yuv(AVFrame *frame, const char *filename) {
@@ -246,8 +293,7 @@ video_encoder_write_frame(
 	// send frame
 	avrc = avcodec_send_frame(state->encoder, frame);
 
-
-	av_frame_unref(frame);
+	// av_frame_unref(frame);
 
 
 	if (avrc < 0)
@@ -282,9 +328,25 @@ video_encoder_write_frame(
 		return VOD_ALLOC_FAILED;
 	}
 
-	save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
+	// save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
+
+	// AVRational t;
+	// t.num = 1;
+	// t.den = state->media_info->frames_timescale;
+	// output_packet->pts = av_rescale_q(output_packet->pts, state->encoder->time_base, t);
+	// output_packet->dts = av_rescale_q(output_packet->dts, state->encoder->time_base, t);
+	// output_packet->duration = av_rescale_q(output_packet->duration, state->encoder->time_base, t);
+
+	//FIXME 这里duration不对！
+	// output_packet->duration = pkt_duration;
+	// if (output_packet->duration == 0) {
+	// 		output_packet->duration = av_rescale_q(1, (AVRational){1, state->encoder->framerate.num}, state->encoder->time_base);
+	// }
+	output_packet->duration = frame->pkt_duration;
+	// output_packet->duration = av_rescale_q(output_packet->duration, state->encoder->time_base, t);
 
 	rc = video_encoder_write_packet(state, output_packet);
+	// state->last_pts = output_packet->pts;
 
 	av_packet_free(&output_packet);
 

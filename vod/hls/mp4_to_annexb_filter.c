@@ -179,10 +179,25 @@ mp4_to_annexb_start_frame(media_filter_context_t* context, output_frame_t* frame
 	return VOD_OK;
 }
 
+
+static void save_to_file(u_char* buffer, int size, const char* filename) {
+    FILE* file = fopen(filename, "ab");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+    size_t written = fwrite(buffer, 1, size, file);
+    if (written != size) {
+        perror("Error writing to file");
+    }
+    fclose(file);
+}
+
 static vod_status_t 
 mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint32_t size)
 {
 	mp4_to_annexb_state_t* state = get_context(context);
+	save_to_file(buffer,size, "/tmp/1xavcc.bin");
 	const u_char* buffer_end = buffer + size;
 	uint32_t write_size;
 	int unit_type;
