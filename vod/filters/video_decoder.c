@@ -468,6 +468,7 @@ video_decoder_decode_frame(
 	u_char* buffer,
 	AVFrame** result)
 {
+	static int count = 0;
 	input_frame_t* frame = state->cur_frame;
 
 	AVPacket* input_packet;
@@ -585,6 +586,10 @@ video_decoder_decode_frame(
 	}
 
 	*result = state->decoded_frame;
+
+	vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+			"video_decoder_decode_frame: frame count %d", count++);
+
 	return VOD_OK;
 }
 

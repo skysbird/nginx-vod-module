@@ -546,7 +546,7 @@ hls_muxer_init_segment(
 
 	if (simulation_supported)
 	{
-		rc = hls_muxer_simulate_get_segment_size(state, response_size);
+		rc = hls_muxer_simulate_get_segment_size(state, response_size); //FIXME response size
 		if (rc != VOD_OK)
 		{
 			return rc;
@@ -1228,7 +1228,7 @@ hls_muxer_simulate_get_segment_size(hls_muxer_state_t* state, size_t* result)
 
 	segment_size = state->queue.cur_offset;
 
-	*result = segment_size;
+	*result = 0; //FIXME 
 
 	return VOD_OK;
 }

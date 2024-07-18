@@ -129,6 +129,9 @@ mp4_to_annexb_simulation_supported(media_info_t* media_info)
 static vod_status_t 
 mp4_to_annexb_start_frame(media_filter_context_t* context, output_frame_t* frame)
 {
+	static int annxb_frame_counter = 0;
+	static int annxb_frame_key_counter = 0;
+
 	mp4_to_annexb_state_t* state = get_context(context);
 	vod_status_t rc;
 
@@ -154,7 +157,9 @@ mp4_to_annexb_start_frame(media_filter_context_t* context, output_frame_t* frame
 		return rc;
 	}
 	
-	// init state
+	vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
+			"mp4_to_annexb_start_frame: annxb_frame_counter %d",annxb_frame_counter++);	// init state
+
 	state->first_frame_packet = TRUE;
 	state->cur_state = STATE_PACKET_SIZE;
 	state->length_bytes_left = state->nal_packet_size_length;
@@ -174,6 +179,9 @@ mp4_to_annexb_start_frame(media_filter_context_t* context, output_frame_t* frame
 		{
 			return rc;
 		}
+		vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
+			"mp4_to_annexb_start_frame: annxb_frame_key_counter %d",annxb_frame_key_counter++);	// init state
+
 	}
 
 	return VOD_OK;
@@ -293,6 +301,10 @@ mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint3
 // 		}
 // 	}
 // 	return VOD_OK;
+	static int counter = 0;
+	vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
+				"mp4_to_annexb_write: counter = %d", counter++);
+
 	return state->next_filter.write(context, buffer,size);
 }
 

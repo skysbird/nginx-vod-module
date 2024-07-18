@@ -27,7 +27,7 @@ audio_decoder_init_decoder(
 	audio_decoder_state_t* state,
 	media_info_t* media_info)
 {
-	AVCodecContext* decoder;
+	AVCodecContext* decoder=NULL;
 	int avrc;
 
 	if (media_info->codec_id != VOD_CODEC_ID_AAC)
@@ -36,6 +36,7 @@ audio_decoder_init_decoder(
 			"audio_decoder_init_decoder: codec id %uD not supported", media_info->codec_id);
 		return VOD_BAD_REQUEST;
 	}
+
 
 	// init the decoder	
 	decoder = avcodec_alloc_context3(decoder_codec);

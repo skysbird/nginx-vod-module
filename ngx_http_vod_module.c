@@ -3144,7 +3144,7 @@ ngx_http_vod_init_frame_processing(ngx_http_vod_ctx_t *ctx)
 	// initialize the protocol specific frame processor
 	ngx_perf_counter_start(ctx->perf_counter_context);
 
-	rc = ctx->request->init_frame_processor(
+	rc = ctx->request->init_frame_processor(//FIXME content_length和实际不符合
 		&ctx->submodule_context,
 		&ctx->segment_writer,
 		&ctx->frame_processor,
@@ -3324,7 +3324,7 @@ ngx_http_vod_finalize_segment_response(ngx_http_vod_ctx_t *ctx)
 	if (r->header_sent)
 	{
 		if (ctx->write_segment_buffer_context.total_size != ctx->content_length &&
-			(ctx->size_limit == 0 || ctx->write_segment_buffer_context.total_size < ctx->size_limit))
+			(ctx->size_limit == 0 || ctx->write_segment_buffer_context.total_size < ctx->size_limit))//FIXME 有2倍量
 		{
 			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
 				"ngx_http_vod_finalize_segment_response: actual content length %uz is different than reported length %uz",

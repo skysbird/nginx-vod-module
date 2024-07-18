@@ -96,7 +96,7 @@ video_encoder_init(
 	state->encoder = encoder;
 	// state->media_info = media_info;
 
-	encoder->gop_size = 30; 
+	encoder->gop_size = 1; 
 	// encoder->has_b_frames = 0;
 	// encoder->max_b_frames = 0;
 
@@ -248,7 +248,8 @@ video_encoder_write_packet(
 
 	cur_frame->duration = output_packet->duration;
 	cur_frame->pts_delay = output_packet->pts - output_packet->dts;
-	
+	cur_frame->key_frame = output_packet->flags & AV_PKT_FLAG_KEY;
+                      
 	return VOD_OK;
 }
 
@@ -289,6 +290,7 @@ video_encoder_write_frame(
 	vod_status_t rc;
 	AVPacket* output_packet;
 	int avrc;
+	static int ecount = 0;
 
 	// save_frame_to_yuv(frame,"/tmp/en.h264");
 
@@ -332,6 +334,9 @@ video_encoder_write_frame(
 
 	// save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
 
+	vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+			"video_encoder_write_frame: ecounter %d", ecount++);
+
 	AVRational t;
 	t.num = 1;
 	t.den = state->output_media_info->frames_timescale;
@@ -363,6 +368,7 @@ video_encoder_flush(
 	AVPacket* output_packet;
 	vod_status_t rc;
 	int avrc;
+	static int ecounter2 = 0;
 
 	avrc = avcodec_send_frame(state->encoder, NULL);
 	if (avrc < 0)
@@ -396,7 +402,18 @@ video_encoder_flush(
 			return VOD_UNEXPECTED;
 		}
 
-		rc = video_encoder_write_packet(state, output_packet);
+		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+			"video_encoder_flush: counter2  %d", ecounter2++);
+
+		AVRational frame_rate = state->encoder->framerate;
+		AVRational time_base = state->encoder->time_base;
+		int64_t frame_duration = av_rescale_q(1, frame_rate, time_base);
+
+		if (output_packet->duration == 0) {
+			output_packet->duration = 512; //FIXME
+		}
+
+		rc = video_encoder_write_packet(state, output_packet); //flush剩余frame,duration是个问题
 
 		if (rc != VOD_OK)
 		{
