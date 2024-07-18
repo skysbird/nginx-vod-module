@@ -197,7 +197,7 @@ static vod_status_t
 mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint32_t size)
 {
 	mp4_to_annexb_state_t* state = get_context(context);
-// 	save_to_file(buffer,size, "/tmp/1xavcc.bin");
+// // 	save_to_file(buffer,size, "/tmp/1xavcc.bin");
 // 	const u_char* buffer_end = buffer + size;
 // 	uint32_t write_size;
 // 	int unit_type;
@@ -228,47 +228,46 @@ mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint3
 // 			// fall through
 			
 // 		case STATE_NAL_TYPE:
-// 			state->cur_state++;
-// // 			unit_type = *buffer & state->unit_type_mask;
-// // 			if (unit_type == state->aud_unit_type)
-// // 			{
-// // 				state->cur_state = STATE_SKIP_PACKET;
-// // 				break;
-// // 			}
+// 			unit_type = *buffer & state->unit_type_mask;
+// 			if (unit_type == state->aud_unit_type)
+// 			{
+// 				state->cur_state = STATE_SKIP_PACKET;
+// 				break;
+// 			}
 
-// // #if (VOD_HAVE_OPENSSL_EVP)
-// // 			if (state->sample_aes)
-// // 			{
-// // 				rc = sample_aes_avc_start_nal_unit(
-// // 					context, 
-// // 					unit_type, 
-// // 					state->packet_size_left);
-// // 				if (rc != VOD_OK)
-// // 				{
-// // 					return rc;
-// // 				}
-// // 			}
-// // #endif // VOD_HAVE_OPENSSL_EVP
+// #if (VOD_HAVE_OPENSSL_EVP)
+// 			if (state->sample_aes)
+// 			{
+// 				rc = sample_aes_avc_start_nal_unit(
+// 					context, 
+// 					unit_type, 
+// 					state->packet_size_left);
+// 				if (rc != VOD_OK)
+// 				{
+// 					return rc;
+// 				}
+// 			}
+// #endif // VOD_HAVE_OPENSSL_EVP
 						
-// // 			if (state->first_frame_packet)
-// // 			{
-// // 				state->first_frame_packet = FALSE;
-// // 				state->frame_size_left -= sizeof(nal_marker);
-// // 				rc = state->next_filter.write(context, nal_marker, sizeof(nal_marker));
-// // 			}
-// // 			else
-// // 			{
-// // 				state->frame_size_left -= (sizeof(nal_marker) - 1);
-// // 				rc = state->next_filter.write(context, nal_marker + 1, sizeof(nal_marker) - 1);
-// // 			}
+// 			if (state->first_frame_packet)
+// 			{
+// 				state->first_frame_packet = FALSE;
+// 				state->frame_size_left -= sizeof(nal_marker);
+// 				rc = state->next_filter.write(context, nal_marker, sizeof(nal_marker));
+// 			}
+// 			else
+// 			{
+// 				state->frame_size_left -= (sizeof(nal_marker) - 1);
+// 				rc = state->next_filter.write(context, nal_marker + 1, sizeof(nal_marker) - 1);
+// 			}
 			
-// // 			if (rc != VOD_OK)
-// // 			{
-// // 				return rc;
-// // 			}
+// 			if (rc != VOD_OK)
+// 			{
+// 				return rc;
+// 			}
 			
-// // 			state->cur_state++;
-// // 			// fall through
+// 			state->cur_state++;
+// 			// fall through
 			
 // 		case STATE_COPY_PACKET:
 // 		case STATE_SKIP_PACKET:
@@ -293,7 +292,7 @@ mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint3
 // 			break;
 // 		}
 // 	}
-	
+// 	return VOD_OK;
 	return state->next_filter.write(context, buffer,size);
 }
 

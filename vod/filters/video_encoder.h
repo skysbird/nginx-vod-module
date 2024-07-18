@@ -11,12 +11,11 @@
 //typedefs
 typedef struct
 {
-	uint16_t width;
-	uint16_t height;
 	uint16_t sample_aspect_ratio_num;
 	uint16_t sample_aspect_ratio_den;
 	enum AVPixelFormat pix_fmt;
     AVRational time_base;
+	media_info_t *media_info;
 
 } video_encoder_params_t;
 

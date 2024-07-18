@@ -180,7 +180,7 @@ video_decoder_init_decoder(
 
 	decoder->codec_tag = media_info->format;
 	decoder->time_base.num = 1;
-	decoder->time_base.den = media_info->frames_timescale/1000;
+	decoder->time_base.den = media_info->frames_timescale;
 	decoder->codec_id = get_ffmpeg_decoder_id(media_info->codec_id);
     decoder->codec_type = AVMEDIA_TYPE_VIDEO;
     decoder->width = media_info->u.video.width;
@@ -507,6 +507,8 @@ video_decoder_decode_frame(
 	spsppsPkt.data = state->extra_data.data;;
 	spsppsPkt.size = state->extra_data.len;;
 
+	// save_to_file(buffer,frame->size,"/tmp/decode_source.bin");
+
 
 	h264Mp4ToAnnexb(buffer, frame->size, &spsppsPkt, &pAvPkt);
 	// uint8_t *out_data = NULL;
@@ -523,6 +525,8 @@ video_decoder_decode_frame(
 	// state->decoder->extradata_size = state->extra_data.len;
 	// save_to_file(pout,poutSize,"/tmp/d.bin");
 	// send a frame
+	// save_to_file(pAvPkt->data,pAvPkt->size,"/tmp/decocde.bin");
+
 	input_packet->data = pAvPkt->data;
 	input_packet->size = pAvPkt->size;
 	input_packet->dts = state->dts;
@@ -538,17 +542,11 @@ video_decoder_decode_frame(
 	vod_memzero(frame_end, sizeof(original_pad));
 
 
-    // save_to_file(pOut->data, pOut->size, "/tmp/a.h264");
 
 
 	avrc = avcodec_send_packet(state->decoder, input_packet);
 	av_packet_free(&input_packet);
-	if (avrc < 0)
-	{
-		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
-			"video_decoder_decode_frame: avcodec_send_packet failed %d", avrc);
-		return VOD_OK;
-	}
+
 
 	// move to the next frame
 	state->cur_frame++;
@@ -561,8 +559,16 @@ video_decoder_decode_frame(
 
 	state->frame_started = FALSE;
 
+	if (avrc < 0)
+	{
+		vod_log_error(VOD_LOG_ERR, state->request_context->log, 0,
+			"video_decoder_decode_frame: avcodec_send_packet failed %s", av_err2str(avrc));
+		return VOD_BAD_DATA;
+	}
+
 	// receive a frame
 	avrc = avcodec_receive_frame(state->decoder, state->decoded_frame);
+
 
 	vod_memcpy(frame_end, original_pad, sizeof(original_pad));
 
@@ -672,9 +678,10 @@ video_decoder_get_frame(
 
 		// process the frame
 		rc = video_decoder_decode_frame(state, read_buffer, result);
-		if (rc != VOD_AGAIN)
+		if (rc != VOD_AGAIN && rc!=VOD_BAD_DATA )
 		{
 			return rc;
-		}
+		} 
+
 	}
 }

@@ -11,6 +11,7 @@ typedef struct
 	vod_array_t* frames_array;
 	AVCodecContext *encoder;
 	int last_pts;
+	media_info_t *output_media_info;
 } video_encoder_state_t;
 
 // globals
@@ -95,20 +96,21 @@ video_encoder_init(
 	state->encoder = encoder;
 	// state->media_info = media_info;
 
-	encoder->gop_size = 1; 
+	encoder->gop_size = 30; 
 	// encoder->has_b_frames = 0;
 	// encoder->max_b_frames = 0;
 
-	encoder->height = params->height;
-	encoder->width = params->width;
+	encoder->height = params->media_info->u.video.height;
+	encoder->width = params->media_info->u.video.width;
 	encoder->sample_aspect_ratio.num = 16;
 	encoder->sample_aspect_ratio.den = 15;
 	encoder->codec_id = encoder_codec->id;
 	encoder->pix_fmt = *(encoder_codec->pix_fmts);
 	encoder->time_base = params->time_base;
+	state->output_media_info = params->media_info;
 	// encoder->bit_rate = 400000;
-	encoder->framerate.num = 1;
-	encoder->framerate.den = 25;
+	// encoder->framerate.num = 1;
+	// encoder->framerate.den = 48;
 
 	// encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
@@ -171,7 +173,7 @@ video_encoder_get_frame_size(void* context)
 
 
 static void save_to_file(u_char* buffer, int size, const char* filename) {
-    FILE* file = fopen(filename, "ab");
+    FILE* file = fopen(filename, "wb");
     if (file == NULL) {
         perror("Error opening file");
         return;
@@ -330,11 +332,11 @@ video_encoder_write_frame(
 
 	// save_to_file(output_packet->data, output_packet->size, "/tmp/en.h264");
 
-	// AVRational t;
-	// t.num = 1;
-	// t.den = state->media_info->frames_timescale;
-	// output_packet->pts = av_rescale_q(output_packet->pts, state->encoder->time_base, t);
-	// output_packet->dts = av_rescale_q(output_packet->dts, state->encoder->time_base, t);
+	AVRational t;
+	t.num = 1;
+	t.den = state->output_media_info->frames_timescale;
+	// output_packet->pts = av_rescale_q(output_packet->pts, t, state->encoder->time_base);
+	// output_packet->dts = av_rescale_q(output_packet->dts, t, state->encoder->time_base);
 	// output_packet->duration = av_rescale_q(output_packet->duration, state->encoder->time_base, t);
 
 	//FIXME 这里duration不对！
@@ -343,7 +345,7 @@ video_encoder_write_frame(
 	// 		output_packet->duration = av_rescale_q(1, (AVRational){1, state->encoder->framerate.num}, state->encoder->time_base);
 	// }
 	output_packet->duration = frame->pkt_duration;
-	// output_packet->duration = av_rescale_q(output_packet->duration, state->encoder->time_base, t);
+	// output_packet->duration = av_rescale_q(output_packet->duration, t, state->encoder->time_base);
 
 	rc = video_encoder_write_packet(state, output_packet);
 	// state->last_pts = output_packet->pts;

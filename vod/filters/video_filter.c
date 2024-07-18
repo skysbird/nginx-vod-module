@@ -766,10 +766,10 @@ video_filter_alloc_state(
 
 
 
+		encoder_params.media_info = &output_track->media_info;
 
-
-		encoder_params.width = output_track->media_info.u.video.width;
-		encoder_params.height = output_track->media_info.u.video.height;
+		// encoder_params.width = output_track->media_info.u.video.width;
+		// encoder_params.height = output_track->media_info.u.video.height;
 
 		encoder_params.pix_fmt = AV_PIX_FMT_YUV420P;
 
