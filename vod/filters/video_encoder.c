@@ -124,6 +124,8 @@ video_encoder_init(
 // 	encoder->bit_rate = params->bitrate;
 // 	encoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;		// make the codec generate the extra data
 
+	av_opt_set(encoder->priv_data, "preset", "fast", 0);
+
 	avrc = avcodec_open2(encoder, encoder_codec, NULL);
 	if (avrc < 0)
 	{
