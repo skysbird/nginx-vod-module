@@ -8,7 +8,7 @@
 // typedefs
 typedef struct {
 	media_clip_t base;
-	vod_fraction_t watermark;
+	vod_str_t watermark;
 	media_info_t *media_info;
 } media_clip_watermark_filter_t;
 

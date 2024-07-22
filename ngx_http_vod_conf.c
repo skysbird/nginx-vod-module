@@ -303,6 +303,7 @@ ngx_http_vod_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 	ngx_conf_merge_str_value(conf->clip_from_param_name, prev->clip_from_param_name, "clipFrom");
 	ngx_conf_merge_str_value(conf->tracks_param_name, prev->tracks_param_name, "tracks");
 	ngx_conf_merge_str_value(conf->time_shift_param_name, prev->time_shift_param_name, "shift");
+	ngx_conf_merge_str_value(conf->watermark_param_name, prev->watermark_param_name, "watermark");
 	ngx_conf_merge_str_value(conf->speed_param_name, prev->speed_param_name, "speed");
 	ngx_conf_merge_str_value(conf->lang_param_name, prev->lang_param_name, "lang");
 

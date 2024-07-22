@@ -91,13 +91,15 @@ watermark_filter_get_desc_size(media_clip_t* clip)
 	
 	char filter_desc[8192] = "";
     char filter_desc_tmp[256];
+	char *temp = filter->watermark.data;
+	*(temp+ filter->watermark.len) = '\0';
 
 	// 生成 drawtext 滤镜描述字符串
     for (int y = 0; y < height; y += y_step) {
         for (int x = 0; x < width; x += x_step) {
-            snprintf(filter_desc_tmp, sizeof(filter_desc_tmp),
-                     "drawtext=text='%s':fontcolor=white:fontsize=%d:x=%d:y=%d,",
-                     "Your Watermark", fontsize, x, y);
+            vod_snprintf(filter_desc_tmp, sizeof(filter_desc_tmp),
+                     "drawtext=text='%s':fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/puhui.ttf:fontsize=%d:x=%d:y=%d,",
+                     temp, fontsize, x, y);
             strcat(filter_desc, filter_desc_tmp);
         }
     }
@@ -131,13 +133,16 @@ watermark_filter_append_desc(u_char* p, media_clip_t* clip)
 	
 	char filter_desc[8192] = "";
     char filter_desc_tmp[256];
+	char *temp = filter->watermark.data;
+	*(temp+ filter->watermark.len) = '\0';
 
 	// 生成 drawtext 滤镜描述字符串
     for (int y = 0; y < height; y += y_step) {
         for (int x = 0; x < width; x += x_step) {
+			
             snprintf(filter_desc_tmp, sizeof(filter_desc_tmp),
-                     "drawtext=text='%s':fontcolor=white:fontsize=%d:x=%d:y=%d,",
-                     "Your Watermark", fontsize, x, y);
+                     "drawtext=text='%s':fontcolor=white:fontfile=/usr/share/fonts/truetype/dejavu/puhui.ttf:fontsize=%d:x=%d:y=%d,",
+                     temp, fontsize, x, y);
             strcat(filter_desc, filter_desc_tmp);
         }
     }
@@ -161,112 +166,7 @@ watermark_filter_parse(
 	vod_json_object_t* element,
 	void** result)
 {
-	media_filter_parse_context_t* context = ctx;
-	media_clip_watermark_filter_t* filter;
-	media_range_t* new_range;
-	media_range_t* old_range;
-	vod_json_value_t* params[watermark_FILTER_PARAM_COUNT];
-	vod_json_value_t* source;
-	vod_json_value_t* watermark;
-	uint32_t old_clip_from;
-	uint32_t old_duration;
-	vod_status_t rc;
-
-	vod_log_debug0(VOD_LOG_DEBUG_LEVEL, context->request_context->log, 0,
-		"watermark_filter_parse: started");
-
-	vod_memzero(params, sizeof(params));
-		
-	vod_json_get_object_values(
-		element,
-		&watermark_filter_hash,
-		params);
-
-	watermark = params[watermark_FILTER_PARAM_watermark];
-	source = params[watermark_FILTER_PARAM_SOURCE];
-
-	if (watermark == NULL || source == NULL)
-	{
-		vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
-			"watermark_filter_parse: \"watermark\" and \"source\" are mandatory for watermark filter");
-		return VOD_BAD_MAPPING;
-	}
-
-	if (watermark->v.num.denom > 100)
-	{
-		vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
-			"watermark_filter_parse: invalid watermark, only 2 decimal points are allowed");
-		return VOD_BAD_MAPPING;
-	}
 	
-	if (watermark->v.num.num < 0 ||
-		watermark->v.num.denom > (uint64_t)watermark->v.num.num * 2 || (uint64_t)watermark->v.num.num > watermark->v.num.denom * 2)
-	{
-		vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
-			"watermark_filter_parse: invalid watermark %L/%uL, must be between 0.5 and 2", watermark->v.num.num, watermark->v.num.denom);
-		return VOD_BAD_MAPPING;
-	}
-
-	filter = vod_alloc(context->request_context->pool, sizeof(*filter) + sizeof(filter->base.sources[0]));
-	if (filter == NULL)
-	{
-		vod_log_debug0(VOD_LOG_DEBUG_LEVEL, context->request_context->log, 0,
-			"watermark_filter_parse: vod_alloc failed (1)");
-		return VOD_ALLOC_FAILED;
-	}
-	filter->base.sources = (void*)(filter + 1);
-	filter->base.source_count = 1;
-
-	filter->base.type = MEDIA_CLIP_WATERMARK_FILTER;
-	filter->base.video_filter = &watermark_filter;
-	filter->base.audio_filter = NULL;
-
-	filter->watermark.num = watermark->v.num.num;
-	filter->watermark.denom = watermark->v.num.denom;
-
-	old_range = context->range;
-	if (old_range != NULL)
-	{
-		new_range = vod_alloc(context->request_context->pool, sizeof(*new_range));
-		if (new_range == NULL)
-		{
-			vod_log_debug0(VOD_LOG_DEBUG_LEVEL, context->request_context->log, 0,
-				"watermark_filter_parse: vod_alloc failed (2)");
-			return VOD_ALLOC_FAILED;
-		}
-
-		new_range->start = (old_range->start * filter->watermark.num) / filter->watermark.denom;
-		new_range->end = (old_range->end * filter->watermark.num) / filter->watermark.denom;
-		new_range->timescale = old_range->timescale;
-		new_range->original_clip_time = old_range->original_clip_time;
-
-		context->range = new_range;
-	}
-
-	old_duration = context->duration;
-	old_clip_from = context->clip_from;
-	context->duration = ((uint64_t)old_duration * filter->watermark.num) / filter->watermark.denom;
-	context->clip_from = ((uint64_t)old_clip_from * filter->watermark.num) / filter->watermark.denom;
-
-	rc = media_set_parse_clip(
-		context, 
-		&source->v.obj, 
-		&filter->base,
-		&filter->base.sources[0]);
-	if (rc != VOD_JSON_OK)
-	{
-		return rc;
-	}
-
-	context->range = old_range;
-	context->duration = old_duration;
-	context->clip_from = old_clip_from;
-
-	*result = &filter->base;
-
-	vod_log_debug2(VOD_LOG_DEBUG_LEVEL, context->request_context->log, 0,
-		"watermark_filter_parse: done, watermark=%uD/%uD", filter->watermark.num, filter->watermark.denom);
-
 	return VOD_OK;
 }
 
@@ -278,23 +178,7 @@ watermark_filter_create_from_string(
 	media_clip_watermark_filter_t** result)
 {
 	media_clip_watermark_filter_t* filter;
-	vod_int_t num;
-
-	num = vod_atofp(str->data, str->len, 2);
-	if (num < 0)
-	{
-		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"watermark_filter_create_from_string: failed to parse playback watermark \"%V\", expecting a float with up to 2 digits precision", str);
-		return VOD_BAD_REQUEST;
-	}
-
-	if (num < 50 || num > 200)
-	{
-		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			"watermark_filter_create_from_string: invalid playback watermark value %i/100, must be between 0.5 and 2", num);
-		return VOD_BAD_REQUEST;
-	}
-
+	
 	filter = vod_alloc(request_context->pool, sizeof(*filter) + sizeof(filter->base.sources[0]));
 	if (filter == NULL)
 	{
@@ -311,8 +195,8 @@ watermark_filter_create_from_string(
 	filter->base.type = MEDIA_CLIP_WATERMARK_FILTER;
 	filter->base.video_filter = &watermark_filter;
 	filter->base.audio_filter = NULL;
-	filter->watermark.num = num;
-	filter->watermark.denom = 100;
+	filter->watermark = *str;
+	
 
 	source->parent = &filter->base;
 

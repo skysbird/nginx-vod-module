@@ -744,12 +744,30 @@ ngx_http_vod_parse_lang_param(ngx_str_t* value, void* output, int offset)
 	return VOD_OK;
 }
 
+
+static ngx_int_t
+ngx_http_vod_parse_watermark_param(ngx_str_t* value, void* output, int offset)
+{
+
+	if (value->len <= 0)
+	{
+		return NGX_HTTP_BAD_REQUEST;
+	}
+
+	uint64_t *p = (uint64_t*)((u_char*)output + offset);
+	ngx_copy(p, value->data, value->len);
+
+	return NGX_OK;
+
+}
+
 static ngx_http_vod_uri_param_def_t uri_param_defs[] = {
 	{ offsetof(ngx_http_vod_loc_conf_t, clip_to_param_name), "clip to", ngx_http_vod_parse_uint64_param, offsetof(media_clip_source_t, clip_to) },
 	{ offsetof(ngx_http_vod_loc_conf_t, clip_from_param_name), "clip from", ngx_http_vod_parse_uint64_param, offsetof(media_clip_source_t, clip_from) },
 	{ offsetof(ngx_http_vod_loc_conf_t, tracks_param_name), "tracks", ngx_http_vod_parse_tracks_param, offsetof(media_clip_source_t, tracks_mask) },
 	{ offsetof(ngx_http_vod_loc_conf_t, time_shift_param_name), "time shift", ngx_http_vod_parse_time_shift_param, offsetof(media_clip_source_t, time_shift) },
 	{ offsetof(ngx_http_vod_loc_conf_t, lang_param_name), "lang", ngx_http_vod_parse_lang_param, 0 },
+	{ offsetof(ngx_http_vod_loc_conf_t, watermark_param_name), "watermark", NULL, 0 },
 	{ offsetof(ngx_http_vod_loc_conf_t, speed_param_name), "speed", NULL, 0 },
 	{ -1, NULL, NULL, 0}
 };
@@ -938,12 +956,11 @@ ngx_http_vod_extract_uri_params(
 				cur_param.data = last_slash + 1;
 				cur_param.len = cur_pos - (last_slash + 1);
 
-				if (param_def->name_conf_offset == offsetof(ngx_http_vod_loc_conf_t, speed_param_name))
+
+				if (param_def->name_conf_offset == offsetof(ngx_http_vod_loc_conf_t, watermark_param_name))
 				{
 					request_context.pool = r->pool;
 					request_context.log = r->connection->log;
-
-
 
 					// //FIXME: 单独配置watermark_filter
 					rc = watermark_filter_create_from_string(
@@ -959,7 +976,11 @@ ngx_http_vod_extract_uri_params(
 					// //FIXME
 					watermark_filter->base.id = (*clip_id)++;
 					*result = &watermark_filter->base;
-
+	
+				}else if (param_def->name_conf_offset == offsetof(ngx_http_vod_loc_conf_t, speed_param_name))
+				{
+					request_context.pool = r->pool;
+					request_context.log = r->connection->log;
 
 					rc = rate_filter_create_from_string(
 						&request_context,

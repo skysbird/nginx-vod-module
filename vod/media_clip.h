@@ -87,6 +87,7 @@ struct media_clip_source_s {
 	track_mask_t tracks_mask[MEDIA_TYPE_COUNT];
 	uint32_t time_shift[MEDIA_TYPE_COUNT];
 	media_clip_source_enc_t encryption;
+	vod_str_t watermark; 
 
 	// derived params
 	vod_str_t stripped_uri;		// without any params like clipTo
