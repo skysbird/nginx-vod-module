@@ -985,7 +985,7 @@ ngx_http_vod_extract_uri_params(
 					rc = rate_filter_create_from_string(
 						&request_context,
 						&cur_param,
-						&watermark_filter->base, 
+						&source_clip->base, 
 						&rate_filter);
 					if (rc != VOD_OK)
 					{

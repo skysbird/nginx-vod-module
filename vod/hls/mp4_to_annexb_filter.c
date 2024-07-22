@@ -6,6 +6,8 @@
 #include "sample_aes_avc_filter.h"
 #endif // VOD_HAVE_OPENSSL_EVP
 
+#include "frame_watermark_filter.h"
+
 // macros
 #define THIS_FILTER (MEDIA_FILTER_MP4_TO_ANNEXB)
 #define get_context(ctx) ((mp4_to_annexb_state_t*)ctx->context[THIS_FILTER])
@@ -205,107 +207,111 @@ static vod_status_t
 mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint32_t size)
 {
 	mp4_to_annexb_state_t* state = get_context(context);
+	frame_watermark_filter_state_t *watermark_filter_state = (frame_watermark_filter_state_t *)context->context[MEDIA_FILTER_WATERMARK];
 // // 	save_to_file(buffer,size, "/tmp/1xavcc.bin");
-// 	const u_char* buffer_end = buffer + size;
-// 	uint32_t write_size;
-// 	int unit_type;
-// 	vod_status_t rc;
+	if (watermark_filter_state == NULL) {
+		const u_char* buffer_end = buffer + size;
+		uint32_t write_size;
+		int unit_type;
+		vod_status_t rc;
 
-// 	while (buffer < buffer_end)
-// 	{
-// 		switch (state->cur_state)
-// 		{
-// 		case STATE_PACKET_SIZE:
-// 			for (; state->length_bytes_left && buffer < buffer_end; state->length_bytes_left--)
-// 			{
-// 				state->packet_size_left = (state->packet_size_left << 8) | *buffer++;
-// 			}
-// 			if (buffer >= buffer_end)
-// 			{
-// 				break;
-// 			}
+		while (buffer < buffer_end)
+		{
+			switch (state->cur_state)
+			{
+			case STATE_PACKET_SIZE:
+				for (; state->length_bytes_left && buffer < buffer_end; state->length_bytes_left--)
+				{
+					state->packet_size_left = (state->packet_size_left << 8) | *buffer++;
+				}
+				if (buffer >= buffer_end)
+				{
+					break;
+				}
 
-// 			if (state->packet_size_left <= 0)
-// 			{
-// 				vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
-// 					"mp4_to_annexb_write: zero size packet");
-// 				return VOD_BAD_DATA;
-// 			}
+				if (state->packet_size_left <= 0)
+				{
+					vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
+						"mp4_to_annexb_write: zero size packet");
+					return VOD_BAD_DATA;
+				}
 
-// 			state->cur_state++;
-// 			// fall through
-			
-// 		case STATE_NAL_TYPE:
-// 			unit_type = *buffer & state->unit_type_mask;
-// 			if (unit_type == state->aud_unit_type)
-// 			{
-// 				state->cur_state = STATE_SKIP_PACKET;
-// 				break;
-// 			}
+				state->cur_state++;
+				// fall through
+				
+			case STATE_NAL_TYPE:
+				unit_type = *buffer & state->unit_type_mask;
+				if (unit_type == state->aud_unit_type)
+				{
+					state->cur_state = STATE_SKIP_PACKET;
+					break;
+				}
 
-// #if (VOD_HAVE_OPENSSL_EVP)
-// 			if (state->sample_aes)
-// 			{
-// 				rc = sample_aes_avc_start_nal_unit(
-// 					context, 
-// 					unit_type, 
-// 					state->packet_size_left);
-// 				if (rc != VOD_OK)
-// 				{
-// 					return rc;
-// 				}
-// 			}
-// #endif // VOD_HAVE_OPENSSL_EVP
-						
-// 			if (state->first_frame_packet)
-// 			{
-// 				state->first_frame_packet = FALSE;
-// 				state->frame_size_left -= sizeof(nal_marker);
-// 				rc = state->next_filter.write(context, nal_marker, sizeof(nal_marker));
-// 			}
-// 			else
-// 			{
-// 				state->frame_size_left -= (sizeof(nal_marker) - 1);
-// 				rc = state->next_filter.write(context, nal_marker + 1, sizeof(nal_marker) - 1);
-// 			}
-			
-// 			if (rc != VOD_OK)
-// 			{
-// 				return rc;
-// 			}
-			
-// 			state->cur_state++;
-// 			// fall through
-			
-// 		case STATE_COPY_PACKET:
-// 		case STATE_SKIP_PACKET:
-// 			write_size = vod_min(state->packet_size_left, (uint32_t)(buffer_end - buffer));
-// 			if (state->cur_state == STATE_COPY_PACKET)
-// 			{
-// 				state->frame_size_left -= write_size;
-// 				rc = state->body_write(context, buffer, write_size);
-// 				if (rc != VOD_OK)
-// 				{
-// 					return rc;
-// 				}
-// 			}
-// 			buffer += write_size;
-// 			state->packet_size_left -= write_size;
-// 			if (state->packet_size_left <= 0)
-// 			{
-// 				state->cur_state = STATE_PACKET_SIZE;
-// 				state->length_bytes_left = state->nal_packet_size_length;
-// 				state->packet_size_left = 0;
-// 			}
-// 			break;
-// 		}
-// 	}
-// 	return VOD_OK;
-	static int counter = 0;
-	vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
-				"mp4_to_annexb_write: counter = %d", counter++);
+	#if (VOD_HAVE_OPENSSL_EVP)
+				if (state->sample_aes)
+				{
+					rc = sample_aes_avc_start_nal_unit(
+						context, 
+						unit_type, 
+						state->packet_size_left);
+					if (rc != VOD_OK)
+					{
+						return rc;
+					}
+				}
+	#endif // VOD_HAVE_OPENSSL_EVP
+							
+				if (state->first_frame_packet)
+				{
+					state->first_frame_packet = FALSE;
+					state->frame_size_left -= sizeof(nal_marker);
+					rc = state->next_filter.write(context, nal_marker, sizeof(nal_marker));
+				}
+				else
+				{
+					state->frame_size_left -= (sizeof(nal_marker) - 1);
+					rc = state->next_filter.write(context, nal_marker + 1, sizeof(nal_marker) - 1);
+				}
+				
+				if (rc != VOD_OK)
+				{
+					return rc;
+				}
+				
+				state->cur_state++;
+				// fall through
+				
+			case STATE_COPY_PACKET:
+			case STATE_SKIP_PACKET:
+				write_size = vod_min(state->packet_size_left, (uint32_t)(buffer_end - buffer));
+				if (state->cur_state == STATE_COPY_PACKET)
+				{
+					state->frame_size_left -= write_size;
+					rc = state->body_write(context, buffer, write_size);
+					if (rc != VOD_OK)
+					{
+						return rc;
+					}
+				}
+				buffer += write_size;
+				state->packet_size_left -= write_size;
+				if (state->packet_size_left <= 0)
+				{
+					state->cur_state = STATE_PACKET_SIZE;
+					state->length_bytes_left = state->nal_packet_size_length;
+					state->packet_size_left = 0;
+				}
+				break;
+			}
+		}
+		return VOD_OK;
+	} else {
+		static int counter = 0;
+		vod_log_error(VOD_LOG_ERR, context->request_context->log, 0,
+					"mp4_to_annexb_write: counter = %d", counter++);
 
-	return state->next_filter.write(context, buffer,size);
+		return state->next_filter.write(context, buffer,size);
+	}
 }
 
 static vod_status_t 

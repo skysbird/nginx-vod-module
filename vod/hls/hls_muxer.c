@@ -344,22 +344,6 @@ hls_muxer_init_base(
 				break;
 			}
 
-			// if (track->media_info.codec_id >= VOD_CODEC_ID_VIDEO && track->media_info.codec_id<=VOD_CODEC_ID_AV1 )
-			// {
-
-			// 	//water mark
-			// 	rc = frame_watermark_filter_init(
-			// 			&cur_stream->filter,
-			// 			&cur_stream->filter_context);
-						
-			// 	if (rc != VOD_OK)
-			// 	{
-			// 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			// "frame_watermark_filter_init: vod_alloc failed %d", rc);
-			// 		return rc;
-			// 	}
-			// }
-
 
 			rc = mp4_to_annexb_init(
 				&cur_stream->filter,
@@ -370,26 +354,6 @@ hls_muxer_init_base(
 				return rc;
 			}
 
-			// if (track->media_info.codec_id >= VOD_CODEC_ID_VIDEO && track->media_info.codec_id<=VOD_CODEC_ID_AV1 )
-			// {
-				
-			// 	vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			// "prepare frame_watermark_filter_init %d", track->media_info.codec_id);
-
-
-			// 	//water mark
-			// 	rc = frame_watermark_filter_init_2(
-			// 			&cur_stream->filter,
-			// 			&cur_stream->filter_context,
-			// 			&track->media_info);
-			// 	if (rc != VOD_OK)
-			// 	{
-			// 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
-			// "frame_watermark_filter_init: vod_alloc failed %d", rc);
-			// 		return rc;
-			// 	}
-			// }
-			
 			
 			break;
 

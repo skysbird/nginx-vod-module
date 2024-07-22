@@ -564,12 +564,12 @@ filter_run_state_machine(void* context)
 				"media_type=%d",state->cur_track->media_info.media_type);
 
 		
-		if (state->cur_track->media_info.media_type != MEDIA_TYPE_VIDEO) {
-			return VOD_OK;
-		}
+		// if (state->cur_track->media_info.media_type != MEDIA_TYPE_VIDEO) {
+		// 	return VOD_OK;
+		// }
 		
 		
-		if (state->video_filter != NULL)
+		if (state->video_filter != NULL && state->cur_track->media_info.media_type == MEDIA_TYPE_VIDEO)
 		{
 			// run the video filter
 			rc = video_filter_process(state->video_filter);
@@ -584,20 +584,20 @@ filter_run_state_machine(void* context)
 			state->cur_track++;
 		}
 
-		// if (state->audio_filter != NULL)
-		// {
-		// 	// run the audio filter
-		// 	rc = audio_filter_process(state->audio_filter);
-		// 	if (rc != VOD_OK)
-		// 	{
-		// 		return rc;
-		// 	}
+		if (state->audio_filter != NULL && state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO)
+		{
+			// run the audio filter
+			rc = audio_filter_process(state->audio_filter);
+			if (rc != VOD_OK)
+			{
+				return rc;
+			}
 
-		// 	audio_filter_free_state(state->audio_filter);
-		// 	state->audio_filter = NULL;
+			audio_filter_free_state(state->audio_filter);
+			state->audio_filter = NULL;
 
-		// 	// state->cur_track++;
-		// }
+			state->cur_track++;
+		}
 
 		
 		
@@ -626,36 +626,36 @@ filter_run_state_machine(void* context)
 			continue;
 		}
 
-		// if (state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO) {
-		// 	// initialize the audio filter
-		// 	rc = audio_filter_alloc_state(
-		// 		state->request_context,
-		// 		state->sequence,
-		// 		state->cur_track->source_clip,
-		// 		state->cur_track,
-		// 		state->max_frame_count,
-		// 		state->output_codec_id,
-		// 		&cache_buffer_count,
-		// 		&state->audio_filter);
-		// 	if (rc != VOD_OK)
-		// 	{
-		// 		return rc;
-		// 	}
+		if (state->cur_track->media_info.media_type == MEDIA_TYPE_AUDIO) {
+			// initialize the audio filter
+			rc = audio_filter_alloc_state(
+				state->request_context,
+				state->sequence,
+				state->cur_track->source_clip,
+				state->cur_track,
+				state->max_frame_count,
+				state->output_codec_id,
+				&cache_buffer_count,
+				&state->audio_filter);
+			if (rc != VOD_OK)
+			{
+				return rc;
+			}
 
-		// 	if (state->audio_filter == NULL)
-		// 	{
-		// 		state->cur_track++;
-		// 	}
-		// 	else
-		// 	{
-		// 		// make sure the cache has enough slots
-		// 		rc = read_cache_allocate_buffer_slots(state->read_cache_state, cache_buffer_count);
-		// 		if (rc != VOD_OK)
-		// 		{
-		// 			return rc;
-		// 		}
-		// 	}
-		// }
+			if (state->audio_filter == NULL)
+			{
+				state->cur_track++;
+			}
+			else
+			{
+				// make sure the cache has enough slots
+				rc = read_cache_allocate_buffer_slots(state->read_cache_state, cache_buffer_count);
+				if (rc != VOD_OK)
+				{
+					return rc;
+				}
+			}
+		}
 
 		if (state->cur_track->media_info.media_type == MEDIA_TYPE_VIDEO) {
 

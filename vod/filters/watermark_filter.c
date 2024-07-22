@@ -187,7 +187,7 @@ watermark_filter_create_from_string(
 		return VOD_ALLOC_FAILED;
 	}
 
-	filter->base.parent = NULL;
+	filter->base.parent = source->parent;
 	filter->base.sources = (void*)(filter + 1);
 	filter->base.sources[0] = source;
 	filter->base.source_count = 1;
