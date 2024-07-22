@@ -5,7 +5,7 @@
 // macros
 // #define watermark_FILTER_DESC_PATTERN "[%uD]atempo=%uD.%02uD[%uD]"
 // #define watermark_FILTER_DESC_PATTERN "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d"
-#define watermark_FILTER_DESC_PATTERN "drawtext=text='Your Watermark':fontcolor=white@0.8:x=10:y=10"
+#define watermark_FILTER_DESC_PATTERN "drawtext=text='Your Watermark':fontcolor=white:fontsize=24:x=mod(2*mod(n\\,w+t*n)+2*t\\,w):y=mod(2*mod(n\\,h+t*n)+2*t\\,h)"
 
 
 // enums
@@ -81,7 +81,30 @@ watermark_filter_scale_track_timestamps(
 static uint32_t
 watermark_filter_get_desc_size(media_clip_t* clip)
 {
-	return sizeof(watermark_FILTER_DESC_PATTERN) + VOD_INT32_LEN * 4;
+	media_clip_watermark_filter_t* filter = vod_container_of(clip, media_clip_watermark_filter_t, base);
+
+	int width = filter->media_info->u.video.width;  // 视频宽度
+    int height = filter->media_info->u.video.height;  // 视频高度
+    int fontsize = 24;
+    int x_step = 200;  // 水平方向步长
+    int y_step = 50;   // 垂直方向步长
+	
+	char filter_desc[8192] = "";
+    char filter_desc_tmp[256];
+
+	// 生成 drawtext 滤镜描述字符串
+    for (int y = 0; y < height; y += y_step) {
+        for (int x = 0; x < width; x += x_step) {
+            snprintf(filter_desc_tmp, sizeof(filter_desc_tmp),
+                     "drawtext=text='%s':fontcolor=white:fontsize=%d:x=%d:y=%d,",
+                     "Your Watermark", fontsize, x, y);
+            strcat(filter_desc, filter_desc_tmp);
+        }
+    }
+
+ 	// 移除最后一个逗号
+    filter_desc[strlen(filter_desc) - 1] = '\0';	
+	return strlen(filter_desc);
 }
 
 static u_char*
@@ -100,10 +123,31 @@ watermark_filter_append_desc(u_char* p, media_clip_t* clip)
 	// 	denom *= 10;
 	// }
 
+	int width = filter->media_info->u.video.width;  // 视频宽度
+    int height = filter->media_info->u.video.height;  // 视频高度
+    int fontsize = 24;
+    int x_step = 200;  // 水平方向步长
+    int y_step = 50;   // 垂直方向步长
+	
+	char filter_desc[8192] = "";
+    char filter_desc_tmp[256];
+
+	// 生成 drawtext 滤镜描述字符串
+    for (int y = 0; y < height; y += y_step) {
+        for (int x = 0; x < width; x += x_step) {
+            snprintf(filter_desc_tmp, sizeof(filter_desc_tmp),
+                     "drawtext=text='%s':fontcolor=white:fontsize=%d:x=%d:y=%d,",
+                     "Your Watermark", fontsize, x, y);
+            strcat(filter_desc, filter_desc_tmp);
+        }
+    }
+
+ 	// 移除最后一个逗号
+    filter_desc[strlen(filter_desc) - 1] = '\0';	
 	//TODO 很多hard coding
 	return vod_sprintf(
 		p,
-		watermark_FILTER_DESC_PATTERN);
+		"%s",filter_desc);
 }
 
 static video_filter_t watermark_filter = {

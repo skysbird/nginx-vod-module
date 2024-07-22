@@ -101,7 +101,8 @@ video_filter_walk_filters_prepare_init(
 	video_filter_init_context_t* state, 
 	media_clip_t** clip_ptr, 
 	uint32_t speed_num, 
-	uint32_t speed_denom)
+	uint32_t speed_denom,
+	media_info_t *media_info)
 {
 	media_clip_rate_filter_t* rate_filter;
 	media_clip_source_t* source;
@@ -169,7 +170,7 @@ video_filter_walk_filters_prepare_init(
 	sources_end = clip->sources + clip->source_count;
 	for (sources_cur = clip->sources; sources_cur < sources_end; sources_cur++)
 	{
-		rc = video_filter_walk_filters_prepare_init(state, sources_cur, speed_num, speed_denom);
+		rc = video_filter_walk_filters_prepare_init(state, sources_cur, speed_num, speed_denom, media_info);
 		if (rc != VOD_OK)
 		{
 			return rc;
@@ -203,6 +204,11 @@ video_filter_walk_filters_prepare_init(
 		}
 		break;
 	}
+
+	media_clip_watermark_filter_t* filter = vod_container_of(clip, media_clip_watermark_filter_t, base);
+
+	filter->media_info = media_info;
+
 
 	// update the graph description size
 	state->graph_desc_size += clip->video_filter->get_filter_desc_size(clip) + 1;	// 1 = ';'
@@ -584,7 +590,7 @@ video_filter_alloc_state(
 	init_context.source_count = 0;
 	init_context.output_frame_count = 0;
 
-	rc = video_filter_walk_filters_prepare_init(&init_context, &clip, 100, 100);
+	rc = video_filter_walk_filters_prepare_init(&init_context, &clip, 100, 100, &output_track->media_info);
 	if (rc != VOD_OK)
 	{
 		return rc;
