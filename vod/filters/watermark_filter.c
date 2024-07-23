@@ -180,6 +180,7 @@ watermark_filter_create_from_string(
 	media_clip_watermark_filter_t* filter;
 	
 	filter = vod_alloc(request_context->pool, sizeof(*filter) + sizeof(filter->base.sources[0]));
+	
 	if (filter == NULL)
 	{
 		vod_log_debug0(VOD_LOG_DEBUG_LEVEL, request_context->log, 0,

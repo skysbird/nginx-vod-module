@@ -579,6 +579,24 @@ audio_filter_alloc_state(
 	init_context.graph_desc_size = 0;
 	init_context.source_count = 0;
 	init_context.output_frame_count = 0;
+	media_clip_t* old_clip = clip;
+
+	while(clip != NULL) {
+		if (clip->type == MEDIA_CLIP_RATE_FILTER) {
+			break;
+		}
+
+		if (clip->type == MEDIA_CLIP_SOURCE) {
+			break;
+		}
+		clip = clip->parent;
+	}
+
+	if (clip == NULL) {
+		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+			"audio_filter_alloc_state: unexpected - no filter found");
+		clip = old_clip;
+	}
 
 	rc = audio_filter_walk_filters_prepare_init(&init_context, &clip, 100, 100);
 	if (rc != VOD_OK)
@@ -1177,6 +1195,20 @@ audio_filter_alloc_state(
 	init_context.graph_desc_size = 0;
 	init_context.source_count = 0;
 	init_context.output_frame_count = 0;
+
+	while(clip != NULL) {
+		if (clip->type == MEDIA_CLIP_RATE_FILTER) {
+			break;
+		}
+		clip = clip->parent;
+	}
+
+	if (clip == NULL) {
+		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+			"audio_filter_alloc_state: unexpected - no filter found");
+		return VOD_UNEXPECTED;
+	}
+
 
 	rc = audio_filter_walk_filters_prepare_init(&init_context, &clip, 100, 100);
 	if (rc != VOD_OK)

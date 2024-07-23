@@ -474,6 +474,6 @@ video_encoder_update_media_info(
 
 	media_info->extra_data.data = new_extra_data;
 	media_info->extra_data.len = encoder->extradata_size;
-
+	media_info->is_annexb = TRUE;
 	return VOD_OK;
 }

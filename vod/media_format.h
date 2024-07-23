@@ -255,6 +255,7 @@ typedef struct media_info_s {
 		video_media_info_t video;
 		audio_media_info_t audio;
 	} u;
+	bool_t is_annexb;
 } media_info_t;
 
 typedef struct {

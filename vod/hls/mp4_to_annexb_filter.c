@@ -36,6 +36,7 @@ typedef struct {
 	uint32_t length_bytes_left;
 	uint32_t packet_size_left;
 	int32_t frame_size_left;
+	bool_t is_annexb;
 } mp4_to_annexb_state_t;
 
 // states
@@ -108,7 +109,7 @@ mp4_to_annexb_set_media_info(
 
 	state->extra_data = media_info->extra_data.data;
 	state->extra_data_size = media_info->extra_data.len;
-
+	state->is_annexb = media_info->is_annexb;
 	return VOD_OK;
 }
 
@@ -207,9 +208,8 @@ static vod_status_t
 mp4_to_annexb_write(media_filter_context_t* context, const u_char* buffer, uint32_t size)
 {
 	mp4_to_annexb_state_t* state = get_context(context);
-	frame_watermark_filter_state_t *watermark_filter_state = (frame_watermark_filter_state_t *)context->context[MEDIA_FILTER_WATERMARK];
 // // 	save_to_file(buffer,size, "/tmp/1xavcc.bin");
-	if (watermark_filter_state == NULL) {
+	if (!state->is_annexb) {
 		const u_char* buffer_end = buffer + size;
 		uint32_t write_size;
 		int unit_type;

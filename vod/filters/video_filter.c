@@ -104,7 +104,7 @@ video_filter_walk_filters_prepare_init(
 	uint32_t speed_denom,
 	media_info_t *media_info)
 {
-	media_clip_rate_filter_t* rate_filter;
+	media_clip_rate_filter_t* watermark_filter;
 	media_clip_source_t* source;
 	media_track_t* video_track;
 	media_track_t* cur_track;
@@ -156,9 +156,9 @@ video_filter_walk_filters_prepare_init(
 
 	switch (clip->type)
 	{
-	case MEDIA_CLIP_RATE_FILTER:
-		rate_filter = vod_container_of(clip, media_clip_rate_filter_t, base);
-		speed_num = ((uint64_t)speed_num * rate_filter->rate.num) / rate_filter->rate.denom;
+	case MEDIA_CLIP_WATERMARK_FILTER:
+		watermark_filter = vod_container_of(clip, media_clip_rate_filter_t, base);
+		// speed_num = ((uint64_t)speed_num * rate_filter->rate.num) / rate_filter->rate.denom;
 		break;
 
 	default:;
@@ -589,6 +589,23 @@ video_filter_alloc_state(
 	init_context.graph_desc_size = 0;
 	init_context.source_count = 0;
 	init_context.output_frame_count = 0;
+	
+	media_clip_t* old_clip = clip;
+	while(clip != NULL) {
+		if (clip->type == MEDIA_CLIP_WATERMARK_FILTER) {
+			break;
+		}
+		if (clip->type == MEDIA_CLIP_SOURCE) {
+			break;
+		}
+		clip = clip->parent;
+	}
+
+	if (clip == NULL) {
+		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
+			"video_filter_alloc_state: unexpected - no filter found");
+		clip = old_clip;
+	}
 
 	rc = video_filter_walk_filters_prepare_init(&init_context, &clip, 100, 100, &output_track->media_info);
 	if (rc != VOD_OK)

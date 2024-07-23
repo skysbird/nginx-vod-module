@@ -58,7 +58,6 @@ VOD_FEATURE_SRCS="                                      \
     $ngx_addon_dir/vod/hls/aes_cbc_encrypt.c            \
     $ngx_addon_dir/vod/hls/eac3_encrypt_filter.c        \
     $ngx_addon_dir/vod/hls/frame_encrypt_filter.c       \
-    $ngx_addon_dir/vod/hls/frame_watermark_filter.c       \
     $ngx_addon_dir/vod/hls/sample_aes_avc_filter.c      \
     $ngx_addon_dir/vod/mp4/mp4_aes_ctr.c                \
     $ngx_addon_dir/vod/mp4/mp4_cbcs_encrypt.c           \
@@ -74,7 +73,6 @@ VOD_FEATURE_DEPS="                                      \
     $ngx_addon_dir/vod/hls/aes_cbc_encrypt.h            \
     $ngx_addon_dir/vod/hls/eac3_encrypt_filter.h        \
     $ngx_addon_dir/vod/hls/frame_encrypt_filter.h       \
-    $ngx_addon_dir/vod/hls/frame_watermark_filter.h       \
     $ngx_addon_dir/vod/hls/sample_aes_avc_filter.h      \
     $ngx_addon_dir/vod/mp4/mp4_aes_ctr.h                \
     $ngx_addon_dir/vod/mp4/mp4_cbcs_encrypt.h           \

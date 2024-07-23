@@ -149,6 +149,42 @@ fail:
 }
 
 
+// 映射函数
+const char* get_ffmpeg_encoder_name(int codec_id) {
+    switch (codec_id) {
+        case VOD_CODEC_ID_AVC:
+            return "libx264";  // H.264 编码器
+        case VOD_CODEC_ID_HEVC:
+            return "libx265";  // H.265 编码器
+        case VOD_CODEC_ID_VP8:
+            return "libvpx";   // VP8 编码器
+        case VOD_CODEC_ID_VP9:
+            return "libvpx-vp9"; // VP9 编码器
+        case VOD_CODEC_ID_AV1:
+            return "libaom-av1"; // AV1 编码器
+        default:
+            return NULL;        // 未知的 codec_id
+    }
+}
+
+// 映射函数
+enum AVCodecID get_ffmpeg_decoder_id(int codec_id) {
+    switch (codec_id) {
+        case VOD_CODEC_ID_AVC:
+            return AV_CODEC_ID_H264;  // H.264 解码器
+        case VOD_CODEC_ID_HEVC:
+            return AV_CODEC_ID_HEVC;  // H.265 解码器
+        case VOD_CODEC_ID_VP8:
+            return AV_CODEC_ID_VP8;   // VP8 解码器
+        case VOD_CODEC_ID_VP9:
+            return AV_CODEC_ID_VP9;   // VP9 解码器
+        case VOD_CODEC_ID_AV1:
+            return AV_CODEC_ID_AV1;   // AV1 解码器
+        default:
+            return AV_CODEC_ID_NONE;  // 未知的 codec_id
+    }
+}
+
 static vod_status_t
 video_decoder_init_decoder(
 	video_decoder_state_t* state,

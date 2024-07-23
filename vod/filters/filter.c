@@ -645,6 +645,7 @@ filter_run_state_machine(void* context)
 			if (state->audio_filter == NULL)
 			{
 				state->cur_track++;
+				continue;
 			}
 			else
 			{
@@ -677,6 +678,7 @@ filter_run_state_machine(void* context)
 			if (state->video_filter == NULL)
 			{
 				state->cur_track++;
+				continue;
 			}
 			else
 			{
