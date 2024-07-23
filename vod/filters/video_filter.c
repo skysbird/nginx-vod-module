@@ -604,7 +604,7 @@ video_filter_alloc_state(
 	if (clip == NULL) {
 		vod_log_error(VOD_LOG_ERR, request_context->log, 0,
 			"video_filter_alloc_state: unexpected - no filter found");
-		clip = old_clip;
+		clip = old_clip;//not found wanted filter, use old filter to find source clip
 	}
 
 	rc = video_filter_walk_filters_prepare_init(&init_context, &clip, 100, 100, &output_track->media_info);
