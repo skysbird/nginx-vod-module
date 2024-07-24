@@ -4497,6 +4497,8 @@ ngx_http_vod_http_reader_open_file(ngx_http_request_t* r, ngx_str_t* path, uint3
 	// Note: for http, no need to open any files, just save the remote uri
 	state->r = r;
 	state->cur_remote_suburi = *path;
+	// state->cur_remote_suburi.data = path->data+7;
+	// state->cur_remote_suburi.len = path->len - 7;
 	if (ctx->state == STATE_MAP_OPEN || ctx->submodule_context.conf->remote_upstream_location.len == 0)
 	{
 		state->upstream_location = ctx->submodule_context.conf->upstream_location;

@@ -487,6 +487,7 @@ ngx_http_vod_hls_handle_index_playlist(
 		&encryption_params,
 		container_format,
 		&submodule_context->media_set,
+		&submodule_context->r->args,
 		response);
 	if (rc != VOD_OK)
 	{

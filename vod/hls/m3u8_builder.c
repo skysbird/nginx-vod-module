@@ -391,6 +391,7 @@ m3u8_builder_build_index_playlist(
 	hls_encryption_params_t* encryption_params,
 	vod_uint_t container_format,
 	media_set_t* media_set,
+	vod_str_t* args,
 	vod_str_t* result)
 {
 	segment_durations_t segment_durations;
@@ -467,7 +468,7 @@ m3u8_builder_build_index_playlist(
 	duration_millis = segment_durations.duration;
 	last_segment_index = last_item[-1].segment_index + last_item[-1].repeat_count;
 	segment_length = sizeof("#EXTINF:.000,\n") - 1 + vod_get_int_print_len(vod_div_ceil(duration_millis, 1000)) +
-		segments_base_url->len + conf->segment_file_name_prefix.len + 1 + vod_get_int_print_len(last_segment_index) + name_suffix.len;
+		segments_base_url->len + conf->segment_file_name_prefix.len + 1 + vod_get_int_print_len(last_segment_index) + name_suffix.len + 1 + args->len; //加上参数,鉴权使用
 
 	result_size =
 		sizeof(M3U8_HEADER_PART1) + VOD_INT64_LEN +
@@ -711,6 +712,13 @@ m3u8_builder_build_index_playlist(
 		p = m3u8_builder_append_extinf_tag(p, rescale_time(cur_item->duration, segment_durations.timescale, scale), scale);
 		extinf.len = p - extinf.data;
 		p = m3u8_builder_append_segment_name(p, segments_base_url, &conf->segment_file_name_prefix, segment_index, &name_suffix);
+		if (args->len>0) {
+			//args append
+			p = p - 1;
+			p = vod_copy(p, "?", 1);
+			p = vod_copy(p, args->data, args->len);
+		}
+
 		segment_index++;
 
 		// write any additional segments
@@ -718,6 +726,12 @@ m3u8_builder_build_index_playlist(
 		{
 			p = vod_copy(p, extinf.data, extinf.len);
 			p = m3u8_builder_append_segment_name(p, segments_base_url, &conf->segment_file_name_prefix, segment_index, &name_suffix);
+			if (args->len>0) {
+				//args append
+				p = p - 1;
+				p = vod_copy(p, "?", 1);
+				p = vod_copy(p, args->data, args->len);
+			}
 		}
 	}
 
